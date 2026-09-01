@@ -9,7 +9,7 @@ import { loadConfig } from "./config.js";
 import { makeDb } from "./db/index.js";
 import { bootstrap, defaultManifest } from "./manifest.js";
 import { Registry } from "./module/registry.js";
-import { initObservability } from "./observability/otel.js";
+import { JsonlTelemetrySink } from "./observability/jsonlSink.js";
 import { exportSpec } from "./spec/export.js";
 import { intake, runHardening } from "./stages/harden.js";
 import { defaultProcessRunner } from "./stages/proc.js";
@@ -28,7 +28,8 @@ async function main(): Promise<void> {
   if ((cmd !== "harden" && cmd !== "run") || !arg) usage();
 
   const config = loadConfig();
-  initObservability(config);
+  // ADR-0009: JSONL sink is the MVP telemetry path; OTLP/Phoenix is a deferred swappable TelemetrySink module.
+  const telemetry = new JsonlTelemetrySink({ filePath: config.telemetryPath });
 
   // Build registry and resolve seams.
   const registry = new Registry();
@@ -97,6 +98,7 @@ async function main(): Promise<void> {
         io,
         workdir: process.cwd(),
         outDir,
+        telemetry,
         tracker,
         checks,
         exportSpec,
@@ -106,7 +108,9 @@ async function main(): Promise<void> {
         maxFixIters: config.maxFixIters,
       });
 
-      const result = await runPipeline({ stages, store, buildContext }, { ticketId });
+      const runSpan = telemetry.startSpan("run", { ticketId, "yoke.ticket": ticketId });
+      const result = await runPipeline({ stages, store, buildContext, telemetry }, { ticketId });
+      runSpan.end({ status: result.status });
       console.log(JSON.stringify(result, null, 2));
     }
   } finally {

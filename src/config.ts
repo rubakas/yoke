@@ -9,6 +9,7 @@ export interface Config {
   ghToken: string | undefined;
   testCommand: string[];
   maxFixIters: number;
+  telemetryPath: string;
 }
 
 function requireEnv(name: string): string {
@@ -50,5 +51,6 @@ export function loadConfig(): Config {
     ghToken: process.env.GH_TOKEN,
     testCommand,
     maxFixIters,
+    telemetryPath: process.env.YOKE_TELEMETRY_PATH ?? "./yoke-telemetry.jsonl",
   };
 }

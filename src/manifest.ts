@@ -5,6 +5,7 @@ import { checkModules } from "./checks/index.js";
 import { executorModules } from "./executor/index.js";
 import { modelModules } from "./model/index.js";
 import { type Registry } from "./module/registry.js";
+import { telemetryModules } from "./observability/index.js";
 import { stageModules } from "./stages/index.js";
 import { storeModules } from "./store/index.js";
 import { trackerModules } from "./tracker/index.js";
@@ -18,6 +19,7 @@ export const defaultManifest: Manifest = {
   executor: { active: "claude-code", enabled: ["claude-code", "noop"] },
   check: { active: "critic", enabled: ["critic", "security"] },
   stage: { active: "harden", enabled: ["harden", "develop", "test", "audit"] },
+  telemetry: { active: "jsonl", enabled: ["jsonl", "noop"] },
 };
 
 /**
@@ -33,6 +35,7 @@ export function bootstrap(registry: Registry, overrides?: Manifest): void {
     ...executorModules,
     ...checkModules,
     ...stageModules,
+    ...telemetryModules,
   ];
   const manifest: Manifest = { ...defaultManifest, ...overrides };
   registry.loadManifest(manifest, allModules);

@@ -33,7 +33,7 @@ export async function runPipeline(
     const priorPassed = runs.some((r) => r.stageName === stage.name && r.status === "passed");
     if (priorPassed) continue;
 
-    const span = deps.telemetry?.startSpan(`stage:${stage.name}`, { ticketId });
+    const span = deps.telemetry?.startSpan(`stage:${stage.name}`, { ticketId, "yoke.stage": stage.name });
     const run = await deps.store.startStageRun(ticketId, stage.name);
 
     try {
