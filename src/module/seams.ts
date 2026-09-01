@@ -217,6 +217,7 @@ export interface TicketStore {
   listWeaknesses(ticketId: number): Promise<WeaknessRow[]>;
   listSecurityFindings(ticketId: number): Promise<SecurityFindingRow[]>;
   listProvenance(ticketId: number): Promise<ProvenanceRow[]>;
+  listTickets(): Promise<TicketRow[]>;
   startStageRun(ticketId: number, stageName: string): Promise<StageRunRow>;
   completeStageRun(runId: number, status: "passed" | "blocked" | "failed", reason?: string): Promise<void>;
   listStageRuns(ticketId: number): Promise<StageRunRow[]>;

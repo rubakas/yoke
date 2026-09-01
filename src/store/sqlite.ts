@@ -159,6 +159,12 @@ export class DrizzleTicketStore implements TicketStore {
     );
   }
 
+  listTickets(): Promise<TicketRow[]> {
+    return Promise.resolve(
+      this.db.select().from(schema.tickets).orderBy(asc(schema.tickets.id)).all()
+    );
+  }
+
   startStageRun(ticketId: number, stageName: string): Promise<StageRunRow> {
     const [row] = this.db
       .insert(schema.stageRuns)

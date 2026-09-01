@@ -10,6 +10,8 @@ export interface Config {
   testCommand: string[];
   maxFixIters: number;
   telemetryPath: string;
+  attachToken: string | undefined;
+  serverPort: number;
 }
 
 function requireEnv(name: string): string {
@@ -43,6 +45,12 @@ export function loadConfig(): Config {
       ? rawMaxFixIters
       : 2;
 
+  const rawServerPort = Number(process.env.YOKE_SERVER_PORT);
+  const serverPort =
+    Number.isFinite(rawServerPort) && Number.isInteger(rawServerPort) && rawServerPort > 0
+      ? rawServerPort
+      : 4100;
+
   return {
     litellmBaseUrl: process.env.LITELLM_BASE_URL ?? "http://localhost:4000/v1",
     litellmVirtualKey: requireEnv("LITELLM_VIRTUAL_KEY"),
@@ -52,5 +60,7 @@ export function loadConfig(): Config {
     testCommand,
     maxFixIters,
     telemetryPath: process.env.YOKE_TELEMETRY_PATH ?? "./yoke-telemetry.jsonl",
+    attachToken: process.env.YOKE_ATTACH_TOKEN,
+    serverPort,
   };
 }
