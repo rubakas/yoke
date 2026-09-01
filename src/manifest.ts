@@ -17,7 +17,7 @@ export const defaultManifest: Manifest = {
   ticketStore: { active: "sqlite", enabled: ["sqlite"] },
   executor: { active: "claude-code", enabled: ["claude-code", "noop"] },
   check: { active: "critic", enabled: ["critic", "security"] },
-  stage: { active: "harden", enabled: ["harden"] },
+  stage: { active: "harden", enabled: ["harden", "develop"] },
 };
 
 /**

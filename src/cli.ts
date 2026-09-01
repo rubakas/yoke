@@ -7,15 +7,14 @@ import { CriticCheck } from "./checks/critic.js";
 import { SecurityCheck } from "./checks/security.js";
 import { loadConfig } from "./config.js";
 import { makeDb } from "./db/index.js";
-import { bootstrap } from "./manifest.js";
+import { bootstrap, defaultManifest } from "./manifest.js";
 import { Registry } from "./module/registry.js";
 import { initObservability } from "./observability/otel.js";
 import { exportSpec } from "./spec/export.js";
 import { intake, runHardening } from "./stages/harden.js";
-import { HardenStage } from "./stages/hardenStage.js";
 import { runPipeline } from "./stages/runner.js";
 import { DrizzleTicketStore } from "./store/sqlite.js";
-import type { TrackerProvider, ModelGateway, Stage, StageContext } from "./module/seams.js";
+import type { TrackerProvider, ModelGateway, Executor, Stage, StageContext } from "./module/seams.js";
 
 function usage(): void {
   console.error("Usage: yoke harden <issue-number | -> | yoke run <issue-number | ->");
@@ -81,10 +80,13 @@ async function main(): Promise<void> {
       const ticketId = await intake(hardenDeps, input);
 
       // Build context supplier for the pipeline; stage-specific fields are optional in StageContext.
-      const enabledStageIds = registry.list("stage").map((m) => (m as { id: string }).id);
-      const stages: Stage[] = enabledStageIds.map((id) => {
-        if (id === "harden") return new HardenStage();
-        throw new Error(`Unknown stage id: ${id}`);
+      const executor = registry.get<Executor>("executor");
+      const stageModulesList = registry.list("stage");
+      const order = defaultManifest.stage?.enabled ?? [];
+      const stages: Stage[] = order.map((id) => {
+        const m = stageModulesList.find((mod) => (mod as { id: string }).id === id);
+        if (!m) throw new Error(`Stage not registered: ${id}`);
+        return (m as { create: () => Stage }).create();
       });
 
       const buildContext = (_stage: Stage): StageContext => ({
@@ -97,6 +99,7 @@ async function main(): Promise<void> {
         tracker,
         checks,
         exportSpec,
+        executor,
       });
 
       const result = await runPipeline({ stages, store, buildContext }, { ticketId });

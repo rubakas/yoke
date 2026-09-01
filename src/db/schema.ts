@@ -10,9 +10,9 @@ export const tickets = sqliteTable("tickets", {
   title: text("title").notNull(),
   body: text("body"),
   intent: text("intent"),
-  // draft | hardening | ready | blocked
+  // draft | hardening | ready | developed | tested | done | blocked
   state: text("state", {
-    enum: ["draft", "hardening", "ready", "blocked"],
+    enum: ["draft", "hardening", "ready", "developed", "tested", "done", "blocked"],
   })
     .notNull()
     .default("draft"),
