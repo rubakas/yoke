@@ -20,13 +20,14 @@
     "format:check": "prettier --check .",
     "rivet:e1": "tsx src/rivet/e1.ts",
     "rivet:host": "tsx src/rivet/main.ts",
+    "rivet:build-project": "tsx src/rivet/project/write-cli.ts",
     "doctor": "tsx src/rivet/doctor.ts",
     "bootstrap": "./bootstrap.sh"
   },
   "dependencies": {
     "@ironclad/rivet-node": "1.25.0",
     "better-sqlite3": "^11.10.0",
-    "drizzle-orm": "^0.44.2"
+    "drizzle-orm": "0.45.2"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
