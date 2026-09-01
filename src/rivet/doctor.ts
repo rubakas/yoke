@@ -1,0 +1,327 @@
+// FR-008: preflight doctor — checks external prerequisites and reports issues.
+
+import { execFile, execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+const _require = createRequire(import.meta.url);
+
+export type CheckStatus = "ok" | "warn" | "fail";
+
+export interface CheckResult {
+  name: string;
+  status: CheckStatus;
+  detail: string;
+  hint?: string;
+}
+
+export interface DoctorProbes {
+  nodeVersion: () => string;
+  which: (bin: string) => string | undefined;
+  exec: (cmd: string, args: string[]) => Promise<{ code: number; stdout: string; stderr: string }>;
+  exists: (path: string) => boolean;
+  fetchJson: (url: string) => Promise<unknown>;
+  /** Tries to load better-sqlite3 for the active Node ABI; returns true if ok. */
+  requireNative: () => boolean;
+  env: NodeJS.ProcessEnv;
+}
+
+export async function runDoctor(probes: DoctorProbes): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  // 1. Node ≥ 22 (required)
+  {
+    const raw = probes.nodeVersion().replace(/^v/, "");
+    const major = parseInt(raw.split(".")[0], 10);
+    if (major >= 22) {
+      results.push({ name: "Node.js ≥ 22", status: "ok", detail: `v${raw}` });
+    } else {
+      results.push({
+        name: "Node.js ≥ 22",
+        status: "fail",
+        detail: `v${raw} (need ≥ 22)`,
+        hint: "nvm install 22 && nvm use  (reads .nvmrc)",
+      });
+    }
+  }
+
+  // 2. pnpm on PATH (required)
+  {
+    const p = probes.which("pnpm");
+    if (p) {
+      results.push({ name: "pnpm", status: "ok", detail: p });
+    } else {
+      results.push({
+        name: "pnpm",
+        status: "fail",
+        detail: "not found on PATH",
+        hint: "corepack enable pnpm",
+      });
+    }
+  }
+
+  // 3. better-sqlite3 native ABI (required)
+  {
+    if (probes.requireNative()) {
+      results.push({ name: "better-sqlite3 (native ABI)", status: "ok", detail: "loads ok" });
+    } else {
+      results.push({
+        name: "better-sqlite3 (native ABI)",
+        status: "fail",
+        detail: "ERR_DLOPEN_FAILED — ABI mismatch",
+        hint: "pnpm rebuild better-sqlite3",
+      });
+    }
+  }
+
+  // 4. Rivet desktop app (required)
+  {
+    const systemPath = "/Applications/Rivet.app";
+    const home = probes.env.HOME ?? "";
+    const userPath = `${home}/Applications/Rivet.app`;
+    const rivetPath = probes.exists(systemPath)
+      ? systemPath
+      : probes.exists(userPath)
+        ? userPath
+        : null;
+
+    if (rivetPath) {
+      const ver = await probes.exec("defaults", [
+        "read",
+        `${rivetPath}/Contents/Info.plist`,
+        "CFBundleShortVersionString",
+      ]);
+      const version = ver.code === 0 ? ver.stdout.trim() : "version unknown";
+      results.push({
+        name: "Rivet.app",
+        status: "ok",
+        detail: `${rivetPath} (v${version})`,
+      });
+    } else {
+      results.push({
+        name: "Rivet.app",
+        status: "fail",
+        detail: "not found in /Applications or ~/Applications",
+        hint: "brew install --cask rivet",
+      });
+    }
+  }
+
+  // 5. claude CLI on PATH + logged in (required)
+  {
+    const claudeBin = probes.which("claude");
+    if (!claudeBin) {
+      results.push({
+        name: "claude CLI",
+        status: "fail",
+        detail: "not found on PATH",
+        hint: "Install from https://docs.claude.com/en/docs/claude-code",
+      });
+    } else {
+      const authResult = await probes.exec("claude", ["auth", "status", "--json"]);
+      let loggedIn = false;
+      if (authResult.code === 0) {
+        try {
+          const raw: unknown = JSON.parse(authResult.stdout);
+          if (typeof raw === "object" && raw !== null && "loggedIn" in raw) {
+            loggedIn = (raw as { loggedIn?: unknown }).loggedIn === true;
+          }
+        } catch {
+          // unparseable output — treat as not logged in
+        }
+      }
+      if (loggedIn) {
+        results.push({ name: "claude CLI", status: "ok", detail: claudeBin });
+      } else {
+        results.push({
+          name: "claude CLI",
+          status: "fail",
+          detail: `found at ${claudeBin} but not logged in`,
+          hint: "claude auth login",
+        });
+      }
+    }
+  }
+
+  // 6. codex CLI + codex doctor (optional → warn)
+  {
+    const codexBin = probes.which("codex");
+    if (!codexBin) {
+      results.push({
+        name: "codex CLI",
+        status: "warn",
+        detail: "not found on PATH",
+        hint: "npm i -g @openai/codex && codex login",
+      });
+    } else {
+      const doctorResult = await probes.exec("codex", ["doctor"]);
+      if (doctorResult.code === 0) {
+        results.push({ name: "codex CLI", status: "ok", detail: codexBin });
+      } else {
+        results.push({
+          name: "codex CLI",
+          status: "warn",
+          detail: `codex doctor exited ${doctorResult.code}`,
+          hint: "npm i -g @openai/codex && codex login",
+        });
+      }
+    }
+  }
+
+  // 7. Ollama reachable + model qwen2.5:1.5b present (optional → warn)
+  {
+    const ollamaBase = probes.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
+    const modelName = "qwen2.5:1.5b";
+    try {
+      const tags = (await probes.fetchJson(`${ollamaBase}/api/tags`)) as {
+        models?: { name: string }[];
+      };
+      results.push({ name: "Ollama", status: "ok", detail: `reachable at ${ollamaBase}` });
+      const hasModel = tags.models?.some((m) => m.name === modelName) ?? false;
+      if (hasModel) {
+        results.push({ name: `Ollama model ${modelName}`, status: "ok", detail: "present" });
+      } else {
+        results.push({
+          name: `Ollama model ${modelName}`,
+          status: "warn",
+          detail: "not found",
+          hint: `ollama pull ${modelName}`,
+        });
+      }
+    } catch {
+      results.push({
+        name: "Ollama",
+        status: "warn",
+        detail: `unreachable at ${ollamaBase}`,
+        hint: "brew install ollama && brew services start ollama",
+      });
+      results.push({
+        name: `Ollama model ${modelName}`,
+        status: "warn",
+        detail: "cannot check (Ollama unreachable)",
+        hint: `ollama pull ${modelName}`,
+      });
+    }
+  }
+
+  // 8. LiteLLM reachable (optional → warn)
+  {
+    const litellmBase = probes.env.LITELLM_BASE_URL ?? "http://localhost:4000";
+    try {
+      await probes.fetchJson(`${litellmBase}/health/liveliness`);
+      results.push({ name: "LiteLLM", status: "ok", detail: `reachable at ${litellmBase}` });
+    } catch {
+      results.push({
+        name: "LiteLLM",
+        status: "warn",
+        detail: `unreachable at ${litellmBase}`,
+        hint: "docker compose up -d litellm",
+      });
+    }
+  }
+
+  // 9. Layer-0: OPENAI_API_KEY / ANTHROPIC_API_KEY must NOT be in env (required)
+  {
+    const leaked = (["OPENAI_API_KEY", "ANTHROPIC_API_KEY"] as const).filter(
+      (k) => k in probes.env && Boolean(probes.env[k])
+    );
+    if (leaked.length === 0) {
+      results.push({
+        name: "Layer-0 key isolation",
+        status: "ok",
+        detail: "no provider keys in env",
+      });
+    } else {
+      results.push({
+        name: "Layer-0 key isolation",
+        status: "fail",
+        detail: `${leaked.join(", ")} found in env — keys belong in LiteLLM only`,
+        hint: `unset ${leaked.join(" ")}`,
+      });
+    }
+  }
+
+  return results;
+}
+
+export function defaultProbes(): DoctorProbes {
+  return {
+    nodeVersion: () => process.version.slice(1),
+
+    which: (bin) => {
+      try {
+        const result = execFileSync("which", [bin], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        return result || undefined;
+      } catch {
+        return undefined;
+      }
+    },
+
+    exec: async (cmd, args) => {
+      try {
+        const result = await execFileAsync(cmd, args, { encoding: "utf8" });
+        return { code: 0, stdout: result.stdout, stderr: result.stderr };
+      } catch (err: unknown) {
+        const e = err as { code?: string | number; stdout?: string; stderr?: string };
+        return {
+          code: typeof e.code === "number" ? e.code : 1,
+          stdout: e.stdout ?? "",
+          stderr: e.stderr ?? "",
+        };
+      }
+    },
+
+    exists: existsSync,
+
+    fetchJson: async (url) => {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return resp.json() as Promise<unknown>;
+    },
+
+    requireNative: () => {
+      try {
+        const Database = _require("better-sqlite3") as (path: string) => { close(): void };
+        const db = Database(":memory:");
+        db.close();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+
+    env: process.env,
+  };
+}
+
+export function formatReport(results: CheckResult[]): string {
+  const icon: Record<CheckStatus, string> = { ok: "✓", warn: "!", fail: "✗" };
+  const lines: string[] = [];
+  for (const r of results) {
+    lines.push(`  ${icon[r.status]} ${r.name.padEnd(40)} ${r.detail}`);
+    if (r.hint) {
+      lines.push(`      hint: ${r.hint}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+export function hasFailures(results: CheckResult[]): boolean {
+  return results.some((r) => r.status === "fail");
+}
+
+// ── Entry point (tsx src/rivet/doctor.ts) ────────────────────────────────────
+const isMain =
+  typeof process.argv[1] === "string" && fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isMain) {
+  const results = await runDoctor(defaultProbes());
+  console.log(formatReport(results));
+  if (hasFailures(results)) process.exit(1);
+}

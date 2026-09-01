@@ -7,6 +7,34 @@ adversarial review (criticism + a security pre-check) — then drives it through
 stages, **spec → development → testing → audit / security / bugfix**, with per-agent logs
 and whole-flow monitoring in one place.
 
+## Quick start (Rivet spike)
+
+**Prerequisites (cannot be auto-installed):**
+
+- Node ≥ 22: `nvm install 22` (`.nvmrc` pins the version)
+- Rivet desktop app: `brew install --cask rivet`
+- `claude` CLI installed and logged in: see https://docs.claude.com/en/docs/claude-code, then `claude auth login`
+
+```sh
+./bootstrap.sh   # installs deps, builds, runs doctor, starts host
+# or
+pnpm bootstrap
+```
+
+**Attach the Rivet editor:**
+
+1. Open Rivet.app
+2. Action bar → Remote Debugger → connect to `ws://localhost:21888` (unauthenticated localhost WebSocket — do not port-forward or expose remotely)
+3. File → Open → `rivet/spec-creation.rivet-project`
+
+**Troubleshoot:**
+
+```sh
+pnpm doctor      # preflight check with fix hints for each missing prereq
+```
+
+---
+
 ## Status
 
 MVP in progress: Stage 1 (spec hardening) implemented end-to-end. Stages 2–4 (development, testing, audit) planned.
