@@ -1,6 +1,7 @@
 // StageRunner — sequences Stage modules for a ticket with gate-stop and resume.
 
 import type {
+  RunControl,
   Stage,
   StageContext,
   TicketStore,
@@ -12,6 +13,7 @@ export interface PipelineDeps {
   store: TicketStore;
   buildContext: (stage: Stage) => StageContext;
   telemetry?: TelemetrySink;
+  control?: RunControl;
 }
 
 export interface PipelineResult {
@@ -32,6 +34,14 @@ export async function runPipeline(
   for (const stage of deps.stages) {
     const priorPassed = runs.some((r) => r.stageName === stage.name && r.status === "passed");
     if (priorPassed) continue;
+
+    if (deps.control?.isAborted) {
+      return { ticketId, status: "blocked", stoppedAt: stage.name, reason: "aborted by operator" };
+    }
+    await deps.control?.checkpoint(); // waits here while paused
+    if (deps.control?.isAborted) {
+      return { ticketId, status: "blocked", stoppedAt: stage.name, reason: "aborted by operator" };
+    }
 
     const span = deps.telemetry?.startSpan(`stage:${stage.name}`, { ticketId, "yoke.stage": stage.name });
     const run = await deps.store.startStageRun(ticketId, stage.name);

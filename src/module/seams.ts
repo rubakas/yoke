@@ -222,6 +222,16 @@ export interface TicketStore {
   listStageRuns(ticketId: number): Promise<StageRunRow[]>;
 }
 
+// ── RunControl ────────────────────────────────────────────────────────────────
+
+/** Operator control over a running pipeline (impl lives in the orchestrator). */
+export interface RunControl {
+  /** True once the operator aborted the run. */
+  readonly isAborted: boolean;
+  /** Resolves immediately unless paused; while paused, resolves when resumed or aborted. */
+  checkpoint(): Promise<void>;
+}
+
 // ── TelemetrySink ─────────────────────────────────────────────────────────────
 
 export interface SpanHandle {

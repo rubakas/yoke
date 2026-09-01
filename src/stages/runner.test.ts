@@ -4,10 +4,12 @@
 import assert from "node:assert/strict";
 import { describe, it, beforeEach } from "node:test";
 import { makeInMemoryDb } from "../db/index.js";
+import { RunControlImpl } from "../orchestrator/control.js";
 import { DrizzleTicketStore } from "../store/sqlite.js";
 import { runPipeline } from "./runner.js";
 import type { PipelineDeps } from "./runner.js";
 import type {
+  RunControl,
   Stage,
   StageContext,
   StageResult,
@@ -96,12 +98,14 @@ function makeDeps(
   ticketId: number,
   stages: Stage[],
   telemetry?: TelemetrySink,
+  control?: RunControl,
 ): PipelineDeps {
   return {
     stages,
     store,
     buildContext: (_stage) => makeCtx(store, ticketId),
     telemetry,
+    control,
   };
 }
 
@@ -274,6 +278,93 @@ describe("runPipeline", () => {
 
       assert.strictEqual(telemetry.spans.length, 1);
       assert.strictEqual(telemetry.spans[0].name, "stage:b");
+    });
+  });
+
+  describe("RunControl — abort", () => {
+    it("abort before a stage: returns blocked with stoppedAt first stage, no stage runs", async () => {
+      const control = new RunControlImpl();
+      control.abort();
+
+      const deps = makeDeps(
+        store,
+        ticketId,
+        [new MustNotRunStage("first"), new MustNotRunStage("second")],
+        undefined,
+        control,
+      );
+      const result = await runPipeline(deps, { ticketId });
+
+      assert.strictEqual(result.status, "blocked");
+      assert.strictEqual(result.stoppedAt, "first");
+      assert.strictEqual(result.reason, "aborted by operator");
+
+      const runs = await store.listStageRuns(ticketId);
+      assert.strictEqual(runs.length, 0, "no stage_run should be created when aborted before run");
+    });
+
+    it("abort mid-pipeline: stage B does not run, stoppedAt is B", async () => {
+      const control = new RunControlImpl();
+
+      // Stage A passes and calls control.abort() to simulate mid-run abort
+      const stageA: Stage = {
+        name: "A",
+        async run(_ctx: StageContext): Promise<StageResult> {
+          control.abort();
+          return { status: "passed" };
+        },
+      };
+
+      const deps = makeDeps(
+        store,
+        ticketId,
+        [stageA, new MustNotRunStage("B")],
+        undefined,
+        control,
+      );
+      const result = await runPipeline(deps, { ticketId });
+
+      assert.strictEqual(result.status, "blocked");
+      assert.strictEqual(result.stoppedAt, "B");
+      assert.strictEqual(result.reason, "aborted by operator");
+
+      const runs = await store.listStageRuns(ticketId);
+      const bRuns = runs.filter((r) => r.stageName === "B");
+      assert.strictEqual(bRuns.length, 0, "stage B should not have a run");
+    });
+  });
+
+  describe("RunControl — pause then resume", () => {
+    it("paused control delays pipeline; resume unblocks and pipeline completes", async () => {
+      const control = new RunControlImpl();
+      control.pause();
+
+      let stageEntered = false;
+      const stageA: Stage = {
+        name: "A",
+        async run(_ctx: StageContext): Promise<StageResult> {
+          stageEntered = true;
+          return { status: "passed" };
+        },
+      };
+
+      const deps = makeDeps(store, ticketId, [stageA], undefined, control);
+
+      // Start pipeline but don't await — it should be blocked at checkpoint
+      const pipelinePromise = runPipeline(deps, { ticketId });
+
+      // Yield to allow the pipeline to reach the checkpoint
+      await Promise.resolve();
+      await Promise.resolve();
+
+      assert.strictEqual(stageEntered, false, "stage should not have entered while paused");
+
+      control.resume();
+      const result = await pipelinePromise;
+
+      assert.strictEqual(stageEntered, true, "stage should run after resume");
+      assert.strictEqual(result.status, "passed");
+      assert.strictEqual(result.stoppedAt, null);
     });
   });
 });
