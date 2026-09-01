@@ -17,9 +17,14 @@
     "lint:fix": "eslint . --fix",
     "check": "pnpm lint && pnpm typecheck && pnpm format:check && pnpm test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "rivet:e1": "tsx src/rivet/e1.ts",
+    "rivet:host": "tsx src/rivet/main.ts",
+    "doctor": "tsx src/rivet/doctor.ts",
+    "bootstrap": "./bootstrap.sh"
   },
   "dependencies": {
+    "@ironclad/rivet-node": "1.25.0",
     "better-sqlite3": "^11.10.0",
     "drizzle-orm": "^0.44.2"
   },
