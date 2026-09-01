@@ -8,6 +8,7 @@ import type {
   weaknesses,
   securityFindings,
   provenance,
+  stageRuns,
 } from "../db/schema.js";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
@@ -90,13 +91,22 @@ export interface Executor {
 
 export interface StageContext {
   ticketId: number;
+  store: TicketStore;
+  model: ModelGateway;
+  io: { ask: (p: string) => Promise<string>; confirm: (p: string) => Promise<boolean> };
   workdir: string;
-  [key: string]: unknown;
+  outDir: string;
+  telemetry?: TelemetrySink;
+  tracker?: TrackerProvider;
+  executor?: Executor;
+  checks?: Record<string, Check>;
+  exportSpec?: (ticket: FullTicket, outDir: string) => Promise<string>;
 }
 
 export interface StageResult {
-  status: "ok" | "blocked" | "skipped";
-  message?: string;
+  status: "passed" | "blocked" | "failed";
+  reason?: string;
+  artifacts?: Record<string, string>;
 }
 
 /**
@@ -142,6 +152,7 @@ export type AcceptanceCriterionRow = InferSelectModel<typeof acceptanceCriteria>
 export type WeaknessRow = InferSelectModel<typeof weaknesses>;
 export type SecurityFindingRow = InferSelectModel<typeof securityFindings>;
 export type ProvenanceRow = InferSelectModel<typeof provenance>;
+export type StageRunRow = InferSelectModel<typeof stageRuns>;
 
 type TicketState = TicketRow["state"];
 
@@ -195,6 +206,9 @@ export interface TicketStore {
   listWeaknesses(ticketId: number): Promise<WeaknessRow[]>;
   listSecurityFindings(ticketId: number): Promise<SecurityFindingRow[]>;
   listProvenance(ticketId: number): Promise<ProvenanceRow[]>;
+  startStageRun(ticketId: number, stageName: string): Promise<StageRunRow>;
+  completeStageRun(runId: number, status: "passed" | "blocked" | "failed", reason?: string): Promise<void>;
+  listStageRuns(ticketId: number): Promise<StageRunRow[]>;
 }
 
 // ── TelemetrySink ─────────────────────────────────────────────────────────────

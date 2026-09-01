@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// FR-001: entry point — `yoke harden <issue-number | ->`
+// FR-001: entry point — `yoke harden <issue-number | ->` / `yoke run <issue-number | ->`
 
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -11,19 +11,21 @@ import { bootstrap } from "./manifest.js";
 import { Registry } from "./module/registry.js";
 import { initObservability } from "./observability/otel.js";
 import { exportSpec } from "./spec/export.js";
-import { runHardening } from "./stages/harden.js";
+import { intake, runHardening } from "./stages/harden.js";
+import { HardenStage } from "./stages/hardenStage.js";
+import { runPipeline } from "./stages/runner.js";
 import { DrizzleTicketStore } from "./store/sqlite.js";
-import type { TrackerProvider, ModelGateway } from "./module/seams.js";
+import type { TrackerProvider, ModelGateway, Stage, StageContext } from "./module/seams.js";
 
 function usage(): void {
-  console.error("Usage: yoke harden <issue-number | ->");
+  console.error("Usage: yoke harden <issue-number | -> | yoke run <issue-number | ->");
   process.exit(1);
 }
 
 async function main(): Promise<void> {
   const [, , cmd, arg] = process.argv;
 
-  if (cmd !== "harden" || !arg) usage();
+  if ((cmd !== "harden" && cmd !== "run") || !arg) usage();
 
   const config = loadConfig();
   initObservability(config);
@@ -54,27 +56,50 @@ async function main(): Promise<void> {
 
   const outDir = join(process.cwd(), "specs");
   const checks = { critic: new CriticCheck(), security: new SecurityCheck() };
+  const hardenDeps = { tracker, model, store, checks, io, exportSpec, outDir };
+
+  async function resolveInput(): Promise<{ issueNumber?: number; freeText?: string; ghIssue?: Awaited<ReturnType<typeof tracker.ingest>> }> {
+    if (arg === "-") return { freeText: "" };
+    const issueNumber = parseInt(arg, 10);
+    if (isNaN(issueNumber) || issueNumber <= 0) {
+      console.error(`Invalid issue number: ${arg}`);
+      process.exit(1);
+    }
+    const ghIssue = await tracker.ingest(String(issueNumber));
+    return { issueNumber, ghIssue };
+  }
 
   try {
-    if (arg === "-") {
-      // Interactive free-text mode (US1).
-      const result = await runHardening(
-        { tracker, model, store, checks, io, exportSpec, outDir },
-        { freeText: "" }
-      );
+    if (cmd === "harden") {
+      const input = await resolveInput();
+      const ticketId = await intake(hardenDeps, input);
+      const result = await runHardening(hardenDeps, { ticketId });
       console.log(JSON.stringify(result, null, 2));
     } else {
-      const issueNumber = parseInt(arg, 10);
-      if (isNaN(issueNumber) || issueNumber <= 0) {
-        console.error(`Invalid issue number: ${arg}`);
-        process.exit(1);
-      }
-      // US4: seed from GitHub issue via the tracker seam.
-      const ghIssue = await tracker.ingest(String(issueNumber));
-      const result = await runHardening(
-        { tracker, model, store, checks, io, exportSpec, outDir },
-        { issueNumber, ghIssue }
-      );
+      // run — intake then drive the ordered stage pipeline from the manifest
+      const input = await resolveInput();
+      const ticketId = await intake(hardenDeps, input);
+
+      // Build context supplier for the pipeline; stage-specific fields are optional in StageContext.
+      const enabledStageIds = registry.list("stage").map((m) => (m as { id: string }).id);
+      const stages: Stage[] = enabledStageIds.map((id) => {
+        if (id === "harden") return new HardenStage();
+        throw new Error(`Unknown stage id: ${id}`);
+      });
+
+      const buildContext = (_stage: Stage): StageContext => ({
+        ticketId,
+        store,
+        model,
+        io,
+        workdir: process.cwd(),
+        outDir,
+        tracker,
+        checks,
+        exportSpec,
+      });
+
+      const result = await runPipeline({ stages, store, buildContext }, { ticketId });
       console.log(JSON.stringify(result, null, 2));
     }
   } finally {

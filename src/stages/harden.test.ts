@@ -11,7 +11,7 @@ import { SecurityCheck } from "../checks/security.js";
 import { makeInMemoryDb } from "../db/index.js";
 import { DrizzleTicketStore } from "../store/sqlite.js";
 import { NoopTracker } from "../tracker/noop.js";
-import { runHardening } from "./harden.js";
+import { intake, runHardening } from "./harden.js";
 import type { HardenDeps, HardenInput } from "./harden.js";
 import type {
   ModelGateway,
@@ -111,7 +111,8 @@ describe("runHardening", () => {
 
     it("returns state=ready with a specPath and numeric ticketId", async () => {
       const deps = makeHappyPathDeps(store, outDir, exportSpyCalls);
-      const result = await runHardening(deps, { freeText: "Do something cool" });
+      const ticketId = await intake(deps, { freeText: "Do something cool" });
+      const result = await runHardening(deps, { ticketId });
       assert.strictEqual(result.state, "ready");
       assert.ok(result.specPath, "specPath should be returned");
       assert.ok(typeof result.ticketId === "number", "ticketId should be a number");
@@ -119,14 +120,16 @@ describe("runHardening", () => {
 
     it("transitions ticket to ready state in the store", async () => {
       const deps = makeHappyPathDeps(store, outDir, exportSpyCalls);
-      const result = await runHardening(deps, { freeText: "Do something cool" });
+      const ticketId = await intake(deps, { freeText: "Do something cool" });
+      const result = await runHardening(deps, { ticketId });
       const ticket = await store.getTicket(result.ticketId);
       assert.strictEqual(ticket?.state, "ready");
     });
 
     it("persists ≥3 acceptance criteria all with testableAssertions", async () => {
       const deps = makeHappyPathDeps(store, outDir, exportSpyCalls);
-      const result = await runHardening(deps, { freeText: "Do something cool" });
+      const ticketId = await intake(deps, { freeText: "Do something cool" });
+      const result = await runHardening(deps, { ticketId });
       const acs = await store.listAcceptanceCriteria(result.ticketId);
       assert.ok(acs.length >= 3, `expected ≥3 ACs, got ${acs.length}`);
       assert.ok(
@@ -137,7 +140,8 @@ describe("runHardening", () => {
 
     it("persists WEAK- rows from the critic step", async () => {
       const deps = makeHappyPathDeps(store, outDir, exportSpyCalls);
-      const result = await runHardening(deps, { freeText: "Do something cool" });
+      const ticketId = await intake(deps, { freeText: "Do something cool" });
+      const result = await runHardening(deps, { ticketId });
       const weaknesses = await store.listWeaknesses(result.ticketId);
       assert.ok(weaknesses.length >= 1, "should have at least one WEAK- row");
       assert.ok(
@@ -148,7 +152,8 @@ describe("runHardening", () => {
 
     it("persists SEC- rows from the security step", async () => {
       const deps = makeHappyPathDeps(store, outDir, exportSpyCalls);
-      const result = await runHardening(deps, { freeText: "Do something cool" });
+      const ticketId = await intake(deps, { freeText: "Do something cool" });
+      const result = await runHardening(deps, { ticketId });
       const findings = await store.listSecurityFindings(result.ticketId);
       assert.ok(findings.length >= 1, "should have at least one SEC- row");
       assert.ok(
@@ -159,7 +164,8 @@ describe("runHardening", () => {
 
     it("calls exportSpec exactly once with the full ticket", async () => {
       const deps = makeHappyPathDeps(store, outDir, exportSpyCalls);
-      await runHardening(deps, { freeText: "Do something cool" });
+      const ticketId = await intake(deps, { freeText: "Do something cool" });
+      await runHardening(deps, { ticketId });
       assert.strictEqual(exportSpyCalls.length, 1, "exportSpec should be called once");
     });
 
@@ -169,7 +175,8 @@ describe("runHardening", () => {
         issueNumber: 42,
         ghIssue: { title: "Fix the login bug", body: "Users cannot log in", labels: [], url: "" },
       };
-      const result = await runHardening(deps, input);
+      const ticketId = await intake(deps, input);
+      const result = await runHardening(deps, { ticketId });
       const ticket = await store.getTicket(result.ticketId);
       assert.ok(
         ticket?.title.includes("Fix the login bug"),
@@ -205,7 +212,8 @@ describe("runHardening", () => {
       const store = makeStore();
       const exportSpyCalls: FullTicket[] = [];
       const deps = makeFailDeps(store, outDir, exportSpyCalls);
-      const result = await runHardening(deps, { freeText: "vague" });
+      const ticketId = await intake(deps, { freeText: "vague" });
+      const result = await runHardening(deps, { ticketId });
       assert.strictEqual(result.state, "blocked");
       assert.ok(result.blockedReason, "should have a blockedReason");
       assert.strictEqual(result.specPath, undefined, "specPath should not be set when blocked");
@@ -215,7 +223,8 @@ describe("runHardening", () => {
       const store = makeStore();
       const exportSpyCalls: FullTicket[] = [];
       const deps = makeFailDeps(store, outDir, exportSpyCalls);
-      await runHardening(deps, { freeText: "vague" });
+      const ticketId = await intake(deps, { freeText: "vague" });
+      await runHardening(deps, { ticketId });
       assert.strictEqual(exportSpyCalls.length, 0, "exportSpec should not be called");
     });
 
@@ -223,7 +232,8 @@ describe("runHardening", () => {
       const store = makeStore();
       const exportSpyCalls: FullTicket[] = [];
       const deps = makeFailDeps(store, outDir, exportSpyCalls);
-      const result = await runHardening(deps, { freeText: "vague" });
+      const ticketId = await intake(deps, { freeText: "vague" });
+      const result = await runHardening(deps, { ticketId });
       const ticket = await store.getTicket(result.ticketId);
       assert.strictEqual(ticket?.state, "blocked");
     });

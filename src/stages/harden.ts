@@ -19,6 +19,10 @@ export interface HardenInput {
   ghIssue?: GhIssue;
 }
 
+export interface HardenTicketInput {
+  ticketId: number;
+}
+
 export interface HardenDeps {
   tracker: TrackerProvider;
   model: ModelGateway;
@@ -64,7 +68,7 @@ function parseJson<T>(content: string): T | null {
   }
 }
 
-// ── Step: draft ───────────────────────────────────────────────────────────────
+// ── Step: draft / intake ──────────────────────────────────────────────────────
 
 async function draftStep(deps: HardenDeps, input: HardenInput): Promise<number> {
   const seed = input.ghIssue;
@@ -82,6 +86,14 @@ async function draftStep(deps: HardenDeps, input: HardenInput): Promise<number> 
 
   await deps.store.updateState(ticket.id, "hardening");
   return ticket.id;
+}
+
+/**
+ * Create a ticket from a raw input (ghIssue or freeText) and return its id.
+ * Corresponds to the draft step — call before runHardening.
+ */
+export async function intake(deps: HardenDeps, input: HardenInput): Promise<number> {
+  return draftStep(deps, input);
 }
 
 // ── Step: enrich ──────────────────────────────────────────────────────────────
@@ -219,11 +231,17 @@ async function gateStep(deps: HardenDeps, ticketId: number): Promise<GateResult>
 
 // ── Orchestrator ──────────────────────────────────────────────────────────────
 
-export async function runHardening(deps: HardenDeps, input: HardenInput): Promise<HardenResult> {
-  const seed = input.ghIssue;
-  const description = seed ? `${seed.title}\n\n${seed.body}` : (input.freeText ?? "");
+export async function runHardening(
+  deps: HardenDeps,
+  input: HardenTicketInput,
+): Promise<HardenResult> {
+  const { ticketId } = input;
 
-  const ticketId = await draftStep(deps, input);
+  const ticket = await deps.store.getFullTicket(ticketId);
+  const description = ticket
+    ? `${ticket.title}${ticket.intent ? `\n\n${ticket.intent}` : ""}`
+    : "";
+
   await enrichStep(deps, ticketId, description);
   await criticStep(deps, ticketId);
   await securityStep(deps, ticketId);
