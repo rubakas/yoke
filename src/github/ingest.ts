@@ -1,16 +1,15 @@
-// TODO(FR-009): ingest a GitHub issue via `gh issue view`.
+// Deprecated: logic has moved to GitHubTracker in src/tracker/github.ts (spec 003).
+// This file is kept only for backward-compatibility during the transition.
 
-import { execFileSync } from "node:child_process";
-
+/** @deprecated Use GitHubTracker.ingest() instead. */
 export interface GhIssue {
   title: string;
   body: string;
   labels: string[];
+  url?: string;
 }
 
-// TODO(FR-009): run `gh issue view <n> --json title,body,labels`, parse the
-// JSON output, and return a GhIssue. Handle nonexistent / empty issues
-// (see spec edge cases) by throwing a descriptive error.
-export function ingestIssue(n: number): GhIssue {
-  throw new Error("TODO(FR-009): ingestIssue() not implemented");
+/** @deprecated Use GitHubTracker.ingest() instead. */
+export function ingestIssue(_n: number): GhIssue {
+  throw new Error("ingestIssue() is deprecated. Use GitHubTracker.ingest() instead.");
 }

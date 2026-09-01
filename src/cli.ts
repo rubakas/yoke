@@ -4,7 +4,7 @@
 import { loadConfig } from "./config.js";
 import { initObservability } from "./observability/otel.js";
 import { runHardening } from "./stages/harden.js";
-import { ingestIssue } from "./github/ingest.js";
+import { GitHubTracker } from "./tracker/github.js";
 
 // TODO(FR-001): extend with a proper arg-parsing library (e.g. parseArgs from
 // node:util) and subcommands as the surface grows.
@@ -34,8 +34,9 @@ async function main(): Promise<void> {
       console.error(`Invalid issue number: ${arg}`);
       process.exit(1);
     }
-    // US4: seed from GitHub issue.
-    const ghIssue = ingestIssue(issueNumber);
+    // US4: seed from GitHub issue via the tracker seam.
+    const tracker = new GitHubTracker();
+    const ghIssue = await tracker.ingest(String(issueNumber));
     await runHardening({ issueNumber, ghIssue });
   }
 }
