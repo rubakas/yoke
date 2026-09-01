@@ -1,5 +1,6 @@
 // Stage module descriptors — registered under the "stage" seam.
 
+import { AuditStage } from "./auditStage.js";
 import { DevelopStage } from "./developStage.js";
 import { HardenStage } from "./hardenStage.js";
 import { TestStage } from "./testStage.js";
@@ -21,5 +22,10 @@ export const stageModules: Module<Stage>[] = [
     id: "test",
     seam: "stage",
     create: () => new TestStage(),
+  },
+  {
+    id: "audit",
+    seam: "stage",
+    create: () => new AuditStage(),
   },
 ];
