@@ -1,11 +1,11 @@
 // Tests for the module registry — FR-001 through FR-005 (spec 002).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it, beforeEach } from "node:test";
 import { Registry } from "./registry.js";
-import type { Module, Manifest } from "./types.js";
 import type { TrackerProvider, ModelGateway } from "./seams.js";
+import type { Module, Manifest } from "./types.js";
 
 // ── Minimal mock implementations ─────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ const mockTracker: TrackerProvider = {
     labels: [],
     url: "https://example.com/1",
   }),
-  syncBack: async (_ref, _update) => {},
+  syncBack: (_ref, _update) => Promise.resolve(),
 };
 
 const mockTracker2: TrackerProvider = {
@@ -26,7 +26,7 @@ const mockTracker2: TrackerProvider = {
     labels: ["bug"],
     url: "https://example.com/2",
   }),
-  syncBack: async (_ref, _update) => {},
+  syncBack: (_ref, _update) => Promise.resolve(),
 };
 
 const mockModel: ModelGateway = {
@@ -197,10 +197,7 @@ describe("Registry", () => {
         (err: unknown) => {
           assert.ok(err instanceof Error);
           const msg = err.message.toLowerCase();
-          assert.ok(
-            msg.includes("executor"),
-            `Expected "executor" in error: "${err.message}"`
-          );
+          assert.ok(msg.includes("executor"), `Expected "executor" in error: "${err.message}"`);
           return true;
         }
       );

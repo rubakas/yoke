@@ -1,8 +1,8 @@
 // ClaudeCodeExecutor — Executor backed by the claude CLI via pi-claude-cli (FR-002, FR-004, spec 004).
 
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
+import { promisify } from "node:util";
 import type { Executor, ExecutorInput, ExecutorResult } from "../module/seams.js";
 
 const execFileAsync = promisify(execFile);
@@ -38,11 +38,7 @@ export class ClaudeCodeExecutor implements Executor {
   private readonly worktreeRoot: string;
   private readonly generateId: () => string;
 
-  constructor(deps?: {
-    run?: CommandRunner;
-    worktreeRoot?: string;
-    generateId?: () => string;
-  }) {
+  constructor(deps?: { run?: CommandRunner; worktreeRoot?: string; generateId?: () => string }) {
     this.runner = deps?.run ?? defaultRunner;
     this.worktreeRoot = deps?.worktreeRoot ?? "/tmp/yoke-worktrees";
     this.generateId = deps?.generateId ?? randomUUID;
@@ -63,12 +59,7 @@ export class ClaudeCodeExecutor implements Executor {
     const claudeOutput = await this.runner("claude", ["-p", spec], { cwd: worktreePath });
 
     // Collect changed files from the worktree.
-    const porcelain = await this.runner("git", [
-      "-C",
-      worktreePath,
-      "status",
-      "--porcelain",
-    ]);
+    const porcelain = await this.runner("git", ["-C", worktreePath, "status", "--porcelain"]);
     const changedFiles = parsePorcelain(porcelain);
 
     // Worktree is intentionally left in place for inspection and debugging.

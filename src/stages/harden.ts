@@ -43,7 +43,12 @@ export interface HardenResult {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function slugify(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ticket";
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "ticket"
+  );
 }
 
 /** Strip markdown code fences (if any) and parse JSON. Returns null on failure. */
@@ -63,7 +68,7 @@ function parseJson<T>(content: string): T | null {
 
 async function draftStep(deps: HardenDeps, input: HardenInput): Promise<number> {
   const seed = input.ghIssue;
-  const rawTitle = seed?.title ?? (input.freeText?.substring(0, 80).trim() || "Untitled");
+  const rawTitle = seed?.title ?? (input.freeText?.substring(0, 80).trim() ?? "Untitled");
   const slug = slugify(rawTitle);
 
   const intent = await deps.io.ask("What is the primary intent of this task?");
@@ -82,8 +87,8 @@ async function draftStep(deps: HardenDeps, input: HardenInput): Promise<number> 
 // ── Step: enrich ──────────────────────────────────────────────────────────────
 
 interface EnrichData {
-  acceptanceCriteria?: Array<{ text: string; testableAssertion: string }>;
-  requirements?: Array<{ code: string; text: string }>;
+  acceptanceCriteria?: { text: string; testableAssertion: string }[];
+  requirements?: { code: string; text: string }[];
 }
 
 async function enrichStep(deps: HardenDeps, ticketId: number, description: string): Promise<void> {
@@ -91,9 +96,9 @@ async function enrichStep(deps: HardenDeps, ticketId: number, description: strin
     {
       role: "system",
       content:
-        'You are a requirements analyst. Given a task description, extract acceptance criteria ' +
-        '(each with a Given/When/Then testable assertion) and functional requirements. ' +
-        'Respond with JSON only: ' +
+        "You are a requirements analyst. Given a task description, extract acceptance criteria " +
+        "(each with a Given/When/Then testable assertion) and functional requirements. " +
+        "Respond with JSON only: " +
         '{"acceptanceCriteria":[{"text":"...","testableAssertion":"Given..., When..., Then..."}],' +
         '"requirements":[{"code":"FR-001","text":"..."}]}',
     },
@@ -130,7 +135,7 @@ async function criticStep(deps: HardenDeps, ticketId: number): Promise<void> {
     store: deps.store,
   });
   for (let i = 0; i < findings.length; i++) {
-    const f = findings[i]!;
+    const f = findings[i];
     await deps.store.addWeakness({
       ticketId,
       code: f.code ?? `WEAK-${String(i + 1).padStart(3, "0")}`,
@@ -149,7 +154,7 @@ async function securityStep(deps: HardenDeps, ticketId: number): Promise<void> {
     store: deps.store,
   });
   for (let i = 0; i < findings.length; i++) {
-    const f = findings[i]!;
+    const f = findings[i];
     await deps.store.addSecurityFinding({
       ticketId,
       code: f.code ?? `SEC-${String(i + 1).padStart(3, "0")}`,
@@ -216,9 +221,7 @@ async function gateStep(deps: HardenDeps, ticketId: number): Promise<GateResult>
 
 export async function runHardening(deps: HardenDeps, input: HardenInput): Promise<HardenResult> {
   const seed = input.ghIssue;
-  const description = seed
-    ? `${seed.title}\n\n${seed.body}`
-    : (input.freeText ?? "");
+  const description = seed ? `${seed.title}\n\n${seed.body}` : (input.freeText ?? "");
 
   const ticketId = await draftStep(deps, input);
   await enrichStep(deps, ticketId, description);

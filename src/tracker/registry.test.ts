@@ -1,12 +1,12 @@
 // Tests for tracker module descriptors wired through the Registry — FR-003 (spec 003).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it, beforeEach } from "node:test";
 import { Registry } from "../module/registry.js";
-import type { Manifest } from "../module/types.js";
-import type { TrackerProvider } from "../module/seams.js";
 import { trackerModules } from "./index.js";
+import type { TrackerProvider } from "../module/seams.js";
+import type { Manifest } from "../module/types.js";
 
 describe("Tracker module descriptors via Registry", () => {
   let registry: Registry;

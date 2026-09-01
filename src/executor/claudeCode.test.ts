@@ -1,8 +1,8 @@
 // Tests for ClaudeCodeExecutor — FR-001, FR-002, FR-004 (spec 004).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { ClaudeCodeExecutor } from "./claudeCode.js";
 import type { CommandRunner } from "./claudeCode.js";
 
@@ -10,8 +10,8 @@ import type { CommandRunner } from "./claudeCode.js";
 
 /** A fake CommandRunner that records every call and returns pre-set responses. */
 class FakeRunner {
-  readonly calls: Array<{ cmd: string; args: string[]; opts?: { cwd?: string } }> = [];
-  private readonly responses: Map<string, string> = new Map();
+  readonly calls: { cmd: string; args: string[]; opts?: { cwd?: string } }[] = [];
+  private readonly responses = new Map<string, string>();
 
   /** Prime a canned response for a given command+args key. */
   prime(cmd: string, args: string[], response: string): void {
@@ -72,10 +72,7 @@ describe("ClaudeCodeExecutor — worktree isolation", () => {
     await executor.run({ spec: SPEC, workdir: WORKDIR });
 
     const worktreeCall = fake.calls.find(
-      (c) =>
-        c.cmd === "git" &&
-        c.args.includes("worktree") &&
-        c.args.includes("add")
+      (c) => c.cmd === "git" && c.args.includes("worktree") && c.args.includes("add")
     );
     assert.ok(worktreeCall, "Expected a git worktree add call");
     assert.deepStrictEqual(worktreeCall, {
@@ -155,7 +152,11 @@ describe("ClaudeCodeExecutor — changed file collection", () => {
 
   it("returns empty changedFiles when porcelain output is empty", async () => {
     const fake = new FakeRunner();
-    fake.prime("git", ["-C", WORKDIR, "worktree", "add", WORKTREE_PATH, "-b", `yoke/${FAKE_RUN_ID}`], "");
+    fake.prime(
+      "git",
+      ["-C", WORKDIR, "worktree", "add", WORKTREE_PATH, "-b", `yoke/${FAKE_RUN_ID}`],
+      ""
+    );
     fake.prime("claude", ["-p", SPEC], "No changes made.");
     fake.prime("git", ["-C", WORKTREE_PATH, "status", "--porcelain"], "");
 
@@ -188,7 +189,10 @@ describe("ClaudeCodeExecutor — return value", () => {
     const result = await executor.run({ spec: SPEC, workdir: WORKDIR });
 
     assert.ok(result.summary.length > 0, "summary should be non-empty");
-    assert.ok(result.summary === CANNED_CLAUDE_OUTPUT.trim(), "summary should be trimmed claude output");
+    assert.ok(
+      result.summary === CANNED_CLAUDE_OUTPUT.trim(),
+      "summary should be trimmed claude output"
+    );
   });
 
   it("log contains the full claude output", async () => {
@@ -212,12 +216,12 @@ describe("ClaudeCodeExecutor — call order", () => {
 
     assert.strictEqual(fake.calls.length, 3);
     // First: git worktree add
-    assert.strictEqual(fake.calls[0]!.cmd, "git");
-    assert.ok(fake.calls[0]!.args.includes("worktree"));
+    assert.strictEqual(fake.calls[0].cmd, "git");
+    assert.ok(fake.calls[0].args.includes("worktree"));
     // Second: claude -p
-    assert.strictEqual(fake.calls[1]!.cmd, "claude");
+    assert.strictEqual(fake.calls[1].cmd, "claude");
     // Third: git status --porcelain
-    assert.strictEqual(fake.calls[2]!.cmd, "git");
-    assert.ok(fake.calls[2]!.args.includes("status"));
+    assert.strictEqual(fake.calls[2].cmd, "git");
+    assert.ok(fake.calls[2].args.includes("status"));
   });
 });

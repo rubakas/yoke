@@ -1,11 +1,11 @@
 # Module System (plugin registry)
 
-| Field        | Value                      |
-|--------------|----------------------------|
+| Field        | Value                           |
+| ------------ | ------------------------------- |
 | Feature Name | Module System (plugin registry) |
-| Branch       | `002-module-system`        |
-| Status       | Draft                      |
-| Created      | 2026-09-01                 |
+| Branch       | `002-module-system`             |
+| Status       | Draft                           |
+| Created      | 2026-09-01                      |
 
 The modularity foundation — every capability plugs into a typed seam; modules connect and disconnect via a config manifest. No provider is hard-wired.
 
@@ -53,13 +53,13 @@ Starting Yoke with a required seam unfilled produces an actionable error, not a 
 
 ## Requirements
 
-| ID     | Requirement |
-|--------|-------------|
+| ID     | Requirement                                                                                                                                              |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-001 | System MUST define TypeScript interfaces for all seams: `TrackerProvider`, `ModelGateway`, `Executor`, `Stage`, `Check`, `TicketStore`, `TelemetrySink`. |
-| FR-002 | System MUST provide a typed `Registry` with `register(seam, module)`, `get(seam)`, and `list(seam)`. |
-| FR-003 | System MUST load and activate modules per a config manifest that enables/disables modules per seam. |
-| FR-004 | Each module MUST declare `id`, `seam`, and an optional config schema. |
-| FR-005 | System MUST fail with a clear error naming the seam when a required seam has no registered implementation. |
+| FR-002 | System MUST provide a typed `Registry` with `register(seam, module)`, `get(seam)`, and `list(seam)`.                                                     |
+| FR-003 | System MUST load and activate modules per a config manifest that enables/disables modules per seam.                                                      |
+| FR-004 | Each module MUST declare `id`, `seam`, and an optional config schema.                                                                                    |
+| FR-005 | System MUST fail with a clear error naming the seam when a required seam has no registered implementation.                                               |
 
 ---
 

@@ -16,8 +16,7 @@ export class NoopExecutor implements Executor {
     this.result = opts?.fixture ?? DEFAULT_RESULT;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async run(_input: ExecutorInput): Promise<ExecutorResult> {
-    return this.result;
+  run(_input: ExecutorInput): Promise<ExecutorResult> {
+    return Promise.resolve(this.result);
   }
 }

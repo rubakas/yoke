@@ -1,11 +1,11 @@
 # Stage-3 Testing
 
-| Field        | Value                   |
-|--------------|-------------------------|
-| Feature Name | Stage-3 Testing         |
-| Branch       | `006-stage3-testing`    |
-| Status       | Draft                   |
-| Created      | 2026-09-01              |
+| Field        | Value                |
+| ------------ | -------------------- |
+| Feature Name | Stage-3 Testing      |
+| Branch       | `006-stage3-testing` |
+| Status       | Draft                |
+| Created      | 2026-09-01           |
 
 Generate and run tests against the ticket's acceptance criteria; record `TEST-` results; run a bounded fix loop on failure; gate on green or documented exhaustion.
 
@@ -39,11 +39,11 @@ When tests fail, Stage-3 drives the Executor to attempt a fix, up to a configure
 
 ## Requirements
 
-| ID     | Requirement |
-|--------|-------------|
-| FR-001 | System MUST generate and run tests derived from the ticket's acceptance criteria. |
-| FR-002 | System MUST record `TEST-` provenance rows with pass/fail and output for each test run. |
-| FR-003 | System MUST run a bounded fix loop on failure, driving the Executor (spec 004); maximum iterations configurable. |
+| ID     | Requirement                                                                                                        |
+| ------ | ------------------------------------------------------------------------------------------------------------------ |
+| FR-001 | System MUST generate and run tests derived from the ticket's acceptance criteria.                                  |
+| FR-002 | System MUST record `TEST-` provenance rows with pass/fail and output for each test run.                            |
+| FR-003 | System MUST run a bounded fix loop on failure, driving the Executor (spec 004); maximum iterations configurable.   |
 | FR-004 | System MUST enforce a stage gate: all tests green or exhaustion documented and escalated to HITL before advancing. |
 
 ---

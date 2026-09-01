@@ -1,8 +1,8 @@
 // Tests for GitHubTracker — FR-001, FR-002 (spec 003).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { GitHubTracker } from "./github.js";
 import type { CommandRunner } from "./github.js";
 
@@ -10,8 +10,8 @@ import type { CommandRunner } from "./github.js";
 
 /** A fake CommandRunner that records every call and returns pre-set responses. */
 class FakeRunner {
-  readonly calls: Array<{ cmd: string; args: string[] }> = [];
-  private readonly responses: Map<string, string> = new Map();
+  readonly calls: { cmd: string; args: string[] }[] = [];
+  private readonly responses = new Map<string, string>();
 
   /** Prime a canned response for a given command+args key. */
   prime(cmd: string, args: string[], response: string): void {
@@ -63,7 +63,7 @@ describe("GitHubTracker.ingest", () => {
     await tracker.ingest("gh#42");
 
     assert.strictEqual(fake.calls.length, 1);
-    assert.strictEqual(fake.calls[0]!.args[2], "42");
+    assert.strictEqual(fake.calls[0].args[2], "42");
   });
 
   it("returns title, body, url and flattened labels from the JSON output", async () => {
@@ -174,6 +174,6 @@ describe("GitHubTracker.syncBack", () => {
     const tracker = new GitHubTracker({ run: fake.run });
     await tracker.syncBack("gh#5", { comment: "hi" });
 
-    assert.strictEqual(fake.calls[0]!.args[2], "5");
+    assert.strictEqual(fake.calls[0].args[2], "5");
   });
 });

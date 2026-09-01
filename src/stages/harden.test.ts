@@ -1,19 +1,25 @@
 // TDD tests for runHardening — FR-002..FR-007 (spec 001-stage1-hardening).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, it, before, beforeEach } from "node:test";
+import { CriticCheck } from "../checks/critic.js";
+import { SecurityCheck } from "../checks/security.js";
 import { makeInMemoryDb } from "../db/index.js";
 import { DrizzleTicketStore } from "../store/sqlite.js";
 import { NoopTracker } from "../tracker/noop.js";
-import { CriticCheck } from "../checks/critic.js";
-import { SecurityCheck } from "../checks/security.js";
 import { runHardening } from "./harden.js";
-import type { ModelGateway, ChatMessage, ChatOptions, ChatResponse, FullTicket } from "../module/seams.js";
 import type { HardenDeps, HardenInput } from "./harden.js";
+import type {
+  ModelGateway,
+  ChatMessage,
+  ChatOptions,
+  ChatResponse,
+  FullTicket,
+} from "../module/seams.js";
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
 
@@ -173,7 +179,11 @@ describe("runHardening", () => {
   });
 
   describe("gate-FAIL path — no acceptance criteria", () => {
-    function makeFailDeps(store: DrizzleTicketStore, outDir: string, exportSpyCalls: FullTicket[]): HardenDeps {
+    function makeFailDeps(
+      store: DrizzleTicketStore,
+      outDir: string,
+      exportSpyCalls: FullTicket[]
+    ): HardenDeps {
       return {
         tracker: new NoopTracker(),
         model: new ScriptedGateway([ENRICH_EMPTY_RESPONSE, CRITIC_RESPONSE, SECURITY_RESPONSE]),

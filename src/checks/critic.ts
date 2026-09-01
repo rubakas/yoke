@@ -5,12 +5,12 @@
 import type { Check, CheckContext, Finding } from "../module/seams.js";
 
 interface CriticData {
-  weaknesses?: Array<{
+  weaknesses?: {
     code?: string;
     text: string;
     severity: string;
     blocking?: boolean;
-  }>;
+  }[];
 }
 
 function parseJson<T>(content: string): T | null {

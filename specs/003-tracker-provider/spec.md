@@ -1,11 +1,11 @@
 # Tracker Provider (swappable; GitHub adapter)
 
-| Field        | Value                        |
-|--------------|------------------------------|
-| Feature Name | Tracker Provider             |
-| Branch       | `003-tracker-provider`       |
-| Status       | Draft                        |
-| Created      | 2026-09-01                   |
+| Field        | Value                  |
+| ------------ | ---------------------- |
+| Feature Name | Tracker Provider       |
+| Branch       | `003-tracker-provider` |
+| Status       | Draft                  |
+| Created      | 2026-09-01             |
 
 The task source is a pluggable `TrackerProvider` seam. `GitHubTracker` is the first adapter; it is replaceable with Jira, Linear, or a local file tracker via the module manifest (spec 002).
 
@@ -51,12 +51,12 @@ Configuring a `NoopTracker` or file-based tracker in the manifest replaces `GitH
 
 ## Requirements
 
-| ID     | Requirement |
-|--------|-------------|
+| ID     | Requirement                                                                                                                                               |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-001 | System MUST define a `TrackerProvider` interface with `ingest(ref) → {title, body, labels, url}`, `syncBack(ref, update)`, and optional `watch(ref, cb)`. |
-| FR-002 | System MUST ship `GitHubTracker` implemented via the `gh` CLI. |
-| FR-003 | The active tracker MUST be selected via the module manifest (spec 002); no tracker is hard-wired. |
-| FR-004 | System MUST ship a `NoopTracker` (or file-based tracker) as the reference swap example. |
+| FR-002 | System MUST ship `GitHubTracker` implemented via the `gh` CLI.                                                                                            |
+| FR-003 | The active tracker MUST be selected via the module manifest (spec 002); no tracker is hard-wired.                                                         |
+| FR-004 | System MUST ship a `NoopTracker` (or file-based tracker) as the reference swap example.                                                                   |
 
 ---
 

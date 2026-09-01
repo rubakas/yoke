@@ -1,0 +1,97 @@
+// ESLint v9 flat config — ADR-0008
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import importX from "eslint-plugin-import-x";
+import prettier from "eslint-config-prettier";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+export default tseslint.config(
+  // ── Ignores ──────────────────────────────────────────────────────────────────
+  {
+    // drizzle.config.ts is a root-level config file not included in tsconfig.json.
+    ignores: ["dist/", "node_modules/", "drizzle/", "*.config.js", "drizzle.config.ts"],
+  },
+
+  // ── Base JS ──────────────────────────────────────────────────────────────────
+  js.configs.recommended,
+
+  // ── TypeScript type-aware ─────────────────────────────────────────────────
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+
+  // ── Type-aware parser options (applies to all TS files) ──────────────────
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: __dirname,
+      },
+    },
+  },
+
+  // ── import-x rules ───────────────────────────────────────────────────────
+  {
+    plugins: {
+      "import-x": importX,
+    },
+    rules: {
+      // Enforce modular boundaries — no circular dependencies.
+      "import-x/no-cycle": "error",
+      // Enforce consistent import ordering.
+      "import-x/order": [
+        "warn",
+        {
+          groups: ["builtin", "external", "internal", "parent", "sibling", "index", "type"],
+          alphabetize: { order: "asc", caseInsensitive: true },
+        },
+      ],
+    },
+  },
+
+  // ── Project-wide TypeScript rules ────────────────────────────────────────
+  {
+    rules: {
+      // Always use `import type` for type-only imports.
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports", fixStyle: "inline-type-imports" },
+      ],
+      // Unhandled promise rejections are silent bugs.
+      "@typescript-eslint/no-floating-promises": "error",
+      // Async functions passed where sync is expected cause silent failures.
+      "@typescript-eslint/no-misused-promises": "error",
+      // Unused variables are almost always mistakes.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", args: "after-used" },
+      ],
+      // `any` weakens type safety — warn rather than error to allow escape hatches.
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
+
+  // ── Test-file overrides ───────────────────────────────────────────────────
+  {
+    files: ["**/*.test.ts"],
+    rules: {
+      // Tests frequently need escape hatches; keep correctness rules on.
+      "@typescript-eslint/no-explicit-any": "off",
+      // Type assertions in tests are idiomatic.
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      // Node built-in test runner: describe()/it() return Promise<void> but the
+      // framework handles them; requiring void/await on every call is noisy.
+      "@typescript-eslint/no-floating-promises": "off",
+      // Mock/stub async methods in test doubles never need await.
+      "@typescript-eslint/require-await": "off",
+    },
+  },
+
+  // ── Prettier LAST — disables all formatting-conflicting rules ────────────
+  prettier
+);

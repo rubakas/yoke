@@ -1,11 +1,11 @@
 # Orchestrator Server + Remote Attach
 
-| Field        | Value                         |
-|--------------|-------------------------------|
-| Feature Name | Orchestrator Server           |
-| Branch       | `008-orchestrator-server`     |
-| Status       | Draft                         |
-| Created      | 2026-09-01                    |
+| Field        | Value                     |
+| ------------ | ------------------------- |
+| Feature Name | Orchestrator Server       |
+| Branch       | `008-orchestrator-server` |
+| Status       | Draft                     |
+| Created      | 2026-09-01                |
 
 A headless server per node exposes an attach API (WebSocket/RPC); a thin CLI client observes and steers running pipelines. Fleet model: independent nodes, each attached individually. Secure remote access via Tailscale or SSH (ADR-0007).
 
@@ -39,13 +39,13 @@ Attaching from a remote machine is gated by Tailscale or SSH authentication.
 
 ## Requirements
 
-| ID     | Requirement |
-|--------|-------------|
-| FR-001 | System MUST run as a headless server (WebSocket or RPC) that is the primary process on each node. |
+| ID     | Requirement                                                                                                                                      |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| FR-001 | System MUST run as a headless server (WebSocket or RPC) that is the primary process on each node.                                                |
 | FR-002 | System MUST expose an attach API supporting: list active runs, subscribe to a run's event stream, and steer commands (approve / pause / resume). |
-| FR-003 | System MUST ship a thin CLI client that implements the attach API against a local or remote node. |
-| FR-004 | System MUST authenticate attach connections; remote access secured via Tailscale or SSH. |
-| FR-005 | Each node operates independently (per-node SQLite state); there is no central coordinator in the MVP. |
+| FR-003 | System MUST ship a thin CLI client that implements the attach API against a local or remote node.                                                |
+| FR-004 | System MUST authenticate attach connections; remote access secured via Tailscale or SSH.                                                         |
+| FR-005 | Each node operates independently (per-node SQLite state); there is no central coordinator in the MVP.                                            |
 
 ---
 

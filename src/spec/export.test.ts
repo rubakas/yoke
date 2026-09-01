@@ -1,11 +1,11 @@
 // TDD tests for exportSpec — FR-007 (spec 001-stage1-hardening).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, it, before } from "node:test";
 import { exportSpec } from "./export.js";
 import type { FullTicket } from "../module/seams.js";
 
@@ -18,9 +18,7 @@ function makeFullTicket(overrides: Partial<FullTicket> = {}): FullTicket {
     state: "hardening",
     sourceRef: null,
     createdAt: "2026-09-01T00:00:00.000Z",
-    requirements: [
-      { id: 1, ticketId: 1, code: "FR-001", text: "System MUST do something" },
-    ],
+    requirements: [{ id: 1, ticketId: 1, code: "FR-001", text: "System MUST do something" }],
     acceptanceCriteria: [
       {
         id: 1,
@@ -83,7 +81,10 @@ describe("exportSpec", () => {
     const ticket = makeFullTicket();
     const path = await exportSpec(ticket, tmpDir);
     const content = await readFile(path, "utf8");
-    assert.ok(content.includes("## User Scenarios & Testing"), "should have User Scenarios section");
+    assert.ok(
+      content.includes("## User Scenarios & Testing"),
+      "should have User Scenarios section"
+    );
     assert.ok(content.includes("Given X, When Y, Then Z"), "should include the testable assertion");
   });
 

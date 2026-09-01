@@ -1,12 +1,12 @@
 // Tests for executor module descriptors wired through the Registry — FR-003 (spec 004).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it, beforeEach } from "node:test";
 import { Registry } from "../module/registry.js";
-import type { Manifest } from "../module/types.js";
-import type { Executor } from "../module/seams.js";
 import { executorModules } from "./index.js";
+import type { Executor } from "../module/seams.js";
+import type { Manifest } from "../module/types.js";
 
 describe("Executor module descriptors via Registry", () => {
   let registry: Registry;

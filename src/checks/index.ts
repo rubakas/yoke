@@ -1,9 +1,9 @@
 // Check module descriptors — registered under the "check" seam.
 
-import type { Module } from "../module/types.js";
-import type { Check } from "../module/seams.js";
 import { CriticCheck } from "./critic.js";
 import { SecurityCheck } from "./security.js";
+import type { Check } from "../module/seams.js";
+import type { Module } from "../module/types.js";
 
 export const checkModules: Module<Check>[] = [
   {

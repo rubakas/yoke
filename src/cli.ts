@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 // FR-001: entry point — `yoke harden <issue-number | ->`
 
-import { createInterface } from "node:readline";
 import { join } from "node:path";
-import { loadConfig } from "./config.js";
-import { initObservability } from "./observability/otel.js";
-import { runHardening } from "./stages/harden.js";
-import { exportSpec } from "./spec/export.js";
-import { Registry } from "./module/registry.js";
-import { bootstrap } from "./manifest.js";
-import { makeDb } from "./db/index.js";
-import { DrizzleTicketStore } from "./store/sqlite.js";
-import type { TrackerProvider, ModelGateway } from "./module/seams.js";
+import { createInterface } from "node:readline";
 import { CriticCheck } from "./checks/critic.js";
 import { SecurityCheck } from "./checks/security.js";
+import { loadConfig } from "./config.js";
+import { makeDb } from "./db/index.js";
+import { bootstrap } from "./manifest.js";
+import { Registry } from "./module/registry.js";
+import { initObservability } from "./observability/otel.js";
+import { exportSpec } from "./spec/export.js";
+import { runHardening } from "./stages/harden.js";
+import { DrizzleTicketStore } from "./store/sqlite.js";
+import type { TrackerProvider, ModelGateway } from "./module/seams.js";
 
 function usage(): void {
   console.error("Usage: yoke harden <issue-number | ->");

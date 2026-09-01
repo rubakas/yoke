@@ -1,9 +1,9 @@
 // Store module descriptors — registered under the "ticketStore" seam (FR-003).
 
-import type { Module } from "../module/types.js";
-import type { TicketStore } from "../module/seams.js";
 import { makeDb } from "../db/index.js";
 import { DrizzleTicketStore } from "./sqlite.js";
+import type { TicketStore } from "../module/seams.js";
+import type { Module } from "../module/types.js";
 
 export const storeModules: Module<TicketStore>[] = [
   {

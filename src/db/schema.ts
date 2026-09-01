@@ -1,11 +1,6 @@
 // FR-003: SQLite schema via Drizzle ORM (ADR-0005 / ADR-0002).
 
-import {
-  sqliteTable,
-  text,
-  integer,
-  real,
-} from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 // ── tickets ──────────────────────────────────────────────────────────────────
 

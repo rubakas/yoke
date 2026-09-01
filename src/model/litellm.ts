@@ -5,12 +5,12 @@ import type { ModelGateway, ChatMessage, ChatOptions, ChatResponse } from "../mo
 
 /** Shape of an OpenAI-compatible chat completions response. */
 interface CompletionResponse {
-  choices: Array<{
+  choices: {
     message: {
       role: string;
       content: string;
     };
-  }>;
+  }[];
 }
 
 export class LiteLLMGateway implements ModelGateway {
@@ -33,9 +33,9 @@ export class LiteLLMGateway implements ModelGateway {
     const model = opts?.model ?? this.defaultModel;
 
     const body: Record<string, unknown> = { messages };
-    if (model !== undefined) body["model"] = model;
-    if (opts?.temperature !== undefined) body["temperature"] = opts.temperature;
-    if (opts?.maxTokens !== undefined) body["max_tokens"] = opts.maxTokens;
+    if (model !== undefined) body.model = model;
+    if (opts?.temperature !== undefined) body.temperature = opts.temperature;
+    if (opts?.maxTokens !== undefined) body.max_tokens = opts.maxTokens;
 
     const response = await this.fetchFn(`${this.baseUrl}/chat/completions`, {
       method: "POST",

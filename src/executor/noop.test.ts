@@ -1,8 +1,8 @@
 // Tests for NoopExecutor — US2 / FR-003 (spec 004).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { NoopExecutor } from "./noop.js";
 import type { ExecutorResult } from "../module/seams.js";
 

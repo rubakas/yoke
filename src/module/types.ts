@@ -2,13 +2,7 @@
 
 /** Union of all pluggable seam names. */
 export type SeamName =
-  | "tracker"
-  | "model"
-  | "executor"
-  | "stage"
-  | "check"
-  | "ticketStore"
-  | "telemetry";
+  "tracker" | "model" | "executor" | "stage" | "check" | "ticketStore" | "telemetry";
 
 /**
  * A module descriptor — declares identity, which seam it satisfies,

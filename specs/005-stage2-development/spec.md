@@ -1,11 +1,11 @@
 # Stage-2 Development
 
-| Field        | Value                      |
-|--------------|----------------------------|
-| Feature Name | Stage-2 Development        |
-| Branch       | `005-stage2-development`   |
-| Status       | Draft                      |
-| Created      | 2026-09-01                 |
+| Field        | Value                    |
+| ------------ | ------------------------ |
+| Feature Name | Stage-2 Development      |
+| Branch       | `005-stage2-development` |
+| Status       | Draft                    |
+| Created      | 2026-09-01               |
 
 Implement the hardened spec via the Executor (spec 004) in an isolated git worktree; record `IMPL-` provenance rows; gate on implementation complete + self-check. Ticket advances `ready` → `in-dev` → `dev-done`.
 
@@ -39,12 +39,12 @@ The stage gate passes only when implementation is reported complete and the self
 
 ## Requirements
 
-| ID     | Requirement |
-|--------|-------------|
-| FR-001 | System MUST consume a `ready` ticket as Stage-2 input. |
-| FR-002 | System MUST create an isolated git worktree (Spec Kitty pattern, ADR-0003) for the implementation run. |
-| FR-003 | System MUST drive the configured Executor (spec 004) with the frozen spec as input. |
-| FR-004 | System MUST record `IMPL-` provenance rows linking the run to the ticket. |
+| ID     | Requirement                                                                                                   |
+| ------ | ------------------------------------------------------------------------------------------------------------- |
+| FR-001 | System MUST consume a `ready` ticket as Stage-2 input.                                                        |
+| FR-002 | System MUST create an isolated git worktree (Spec Kitty pattern, ADR-0003) for the implementation run.        |
+| FR-003 | System MUST drive the configured Executor (spec 004) with the frozen spec as input.                           |
+| FR-004 | System MUST record `IMPL-` provenance rows linking the run to the ticket.                                     |
 | FR-005 | System MUST enforce a stage gate: implementation complete + self-check passed before advancing to `dev-done`. |
 
 ---

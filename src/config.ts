@@ -35,8 +35,7 @@ export function loadConfig(): Config {
     litellmBaseUrl: process.env.LITELLM_BASE_URL ?? "http://localhost:4000/v1",
     litellmVirtualKey: requireEnv("LITELLM_VIRTUAL_KEY"),
     dbPath: process.env.YOKE_DB_PATH ?? "./yoke.sqlite",
-    phoenixOtlpUrl:
-      process.env.PHOENIX_OTLP_URL ?? "http://localhost:6006/v1/traces",
+    phoenixOtlpUrl: process.env.PHOENIX_OTLP_URL ?? "http://localhost:6006/v1/traces",
     ghToken: process.env.GH_TOKEN,
   };
 }

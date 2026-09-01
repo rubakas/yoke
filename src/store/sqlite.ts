@@ -23,7 +23,7 @@ import type {
 export class DrizzleTicketStore implements TicketStore {
   constructor(private readonly db: DbInstance) {}
 
-  async createTicket(data: NewTicket): Promise<TicketRow> {
+  createTicket(data: NewTicket): Promise<TicketRow> {
     const [row] = this.db
       .insert(schema.tickets)
       .values({
@@ -34,15 +34,13 @@ export class DrizzleTicketStore implements TicketStore {
       })
       .returning()
       .all();
-    return row;
+    return Promise.resolve(row);
   }
 
-  async getTicket(id: number): Promise<TicketRow | undefined> {
-    return this.db
-      .select()
-      .from(schema.tickets)
-      .where(eq(schema.tickets.id, id))
-      .get();
+  getTicket(id: number): Promise<TicketRow | undefined> {
+    return Promise.resolve(
+      this.db.select().from(schema.tickets).where(eq(schema.tickets.id, id)).get()
+    );
   }
 
   async getFullTicket(id: number): Promise<FullTicket | undefined> {
@@ -50,31 +48,19 @@ export class DrizzleTicketStore implements TicketStore {
     if (!ticket) return undefined;
 
     const [reqs, acs, ws, sfs, provs] = [
-      this.db
-        .select()
-        .from(schema.requirements)
-        .where(eq(schema.requirements.ticketId, id))
-        .all(),
+      this.db.select().from(schema.requirements).where(eq(schema.requirements.ticketId, id)).all(),
       this.db
         .select()
         .from(schema.acceptanceCriteria)
         .where(eq(schema.acceptanceCriteria.ticketId, id))
         .all(),
-      this.db
-        .select()
-        .from(schema.weaknesses)
-        .where(eq(schema.weaknesses.ticketId, id))
-        .all(),
+      this.db.select().from(schema.weaknesses).where(eq(schema.weaknesses.ticketId, id)).all(),
       this.db
         .select()
         .from(schema.securityFindings)
         .where(eq(schema.securityFindings.ticketId, id))
         .all(),
-      this.db
-        .select()
-        .from(schema.provenance)
-        .where(eq(schema.provenance.ticketId, id))
-        .all(),
+      this.db.select().from(schema.provenance).where(eq(schema.provenance.ticketId, id)).all(),
     ];
 
     return {
@@ -87,96 +73,87 @@ export class DrizzleTicketStore implements TicketStore {
     };
   }
 
-  async updateState(id: number, state: TicketRow["state"]): Promise<void> {
-    this.db
-      .update(schema.tickets)
-      .set({ state })
-      .where(eq(schema.tickets.id, id))
-      .run();
+  updateState(id: number, state: TicketRow["state"]): Promise<void> {
+    this.db.update(schema.tickets).set({ state }).where(eq(schema.tickets.id, id)).run();
+    return Promise.resolve();
   }
 
-  async addRequirement(input: NewRequirement): Promise<RequirementRow> {
-    const [row] = this.db
-      .insert(schema.requirements)
-      .values(input)
-      .returning()
-      .all();
-    return row;
+  addRequirement(input: NewRequirement): Promise<RequirementRow> {
+    const [row] = this.db.insert(schema.requirements).values(input).returning().all();
+    return Promise.resolve(row);
   }
 
-  async addAcceptanceCriterion(input: NewAcceptanceCriterion): Promise<AcceptanceCriterionRow> {
-    const [row] = this.db
-      .insert(schema.acceptanceCriteria)
-      .values(input)
-      .returning()
-      .all();
-    return row;
+  addAcceptanceCriterion(input: NewAcceptanceCriterion): Promise<AcceptanceCriterionRow> {
+    const [row] = this.db.insert(schema.acceptanceCriteria).values(input).returning().all();
+    return Promise.resolve(row);
   }
 
-  async addWeakness(input: NewWeakness): Promise<WeaknessRow> {
-    const [row] = this.db
-      .insert(schema.weaknesses)
-      .values(input)
-      .returning()
-      .all();
-    return row;
+  addWeakness(input: NewWeakness): Promise<WeaknessRow> {
+    const [row] = this.db.insert(schema.weaknesses).values(input).returning().all();
+    return Promise.resolve(row);
   }
 
-  async addSecurityFinding(input: NewSecurityFinding): Promise<SecurityFindingRow> {
-    const [row] = this.db
-      .insert(schema.securityFindings)
-      .values(input)
-      .returning()
-      .all();
-    return row;
+  addSecurityFinding(input: NewSecurityFinding): Promise<SecurityFindingRow> {
+    const [row] = this.db.insert(schema.securityFindings).values(input).returning().all();
+    return Promise.resolve(row);
   }
 
-  async addProvenance(input: NewProvenance): Promise<ProvenanceRow> {
+  addProvenance(input: NewProvenance): Promise<ProvenanceRow> {
     const [row] = this.db
       .insert(schema.provenance)
       .values({ ...input, at: new Date().toISOString() })
       .returning()
       .all();
-    return row;
+    return Promise.resolve(row);
   }
 
-  async listRequirements(ticketId: number): Promise<RequirementRow[]> {
-    return this.db
-      .select()
-      .from(schema.requirements)
-      .where(eq(schema.requirements.ticketId, ticketId))
-      .all();
+  listRequirements(ticketId: number): Promise<RequirementRow[]> {
+    return Promise.resolve(
+      this.db
+        .select()
+        .from(schema.requirements)
+        .where(eq(schema.requirements.ticketId, ticketId))
+        .all()
+    );
   }
 
-  async listAcceptanceCriteria(ticketId: number): Promise<AcceptanceCriterionRow[]> {
-    return this.db
-      .select()
-      .from(schema.acceptanceCriteria)
-      .where(eq(schema.acceptanceCriteria.ticketId, ticketId))
-      .all();
+  listAcceptanceCriteria(ticketId: number): Promise<AcceptanceCriterionRow[]> {
+    return Promise.resolve(
+      this.db
+        .select()
+        .from(schema.acceptanceCriteria)
+        .where(eq(schema.acceptanceCriteria.ticketId, ticketId))
+        .all()
+    );
   }
 
-  async listWeaknesses(ticketId: number): Promise<WeaknessRow[]> {
-    return this.db
-      .select()
-      .from(schema.weaknesses)
-      .where(eq(schema.weaknesses.ticketId, ticketId))
-      .all();
+  listWeaknesses(ticketId: number): Promise<WeaknessRow[]> {
+    return Promise.resolve(
+      this.db
+        .select()
+        .from(schema.weaknesses)
+        .where(eq(schema.weaknesses.ticketId, ticketId))
+        .all()
+    );
   }
 
-  async listSecurityFindings(ticketId: number): Promise<SecurityFindingRow[]> {
-    return this.db
-      .select()
-      .from(schema.securityFindings)
-      .where(eq(schema.securityFindings.ticketId, ticketId))
-      .all();
+  listSecurityFindings(ticketId: number): Promise<SecurityFindingRow[]> {
+    return Promise.resolve(
+      this.db
+        .select()
+        .from(schema.securityFindings)
+        .where(eq(schema.securityFindings.ticketId, ticketId))
+        .all()
+    );
   }
 
-  async listProvenance(ticketId: number): Promise<ProvenanceRow[]> {
-    return this.db
-      .select()
-      .from(schema.provenance)
-      .where(eq(schema.provenance.ticketId, ticketId))
-      .all();
+  listProvenance(ticketId: number): Promise<ProvenanceRow[]> {
+    return Promise.resolve(
+      this.db
+        .select()
+        .from(schema.provenance)
+        .where(eq(schema.provenance.ticketId, ticketId))
+        .all()
+    );
   }
 }

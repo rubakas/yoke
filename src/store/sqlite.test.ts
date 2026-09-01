@@ -1,8 +1,8 @@
 // TDD tests for DrizzleTicketStore — FR-003 (spec 001-stage1-hardening).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it, beforeEach } from "node:test";
 import { makeInMemoryDb } from "../db/index.js";
 import { DrizzleTicketStore } from "./sqlite.js";
 import type { DbInstance } from "../db/index.js";
@@ -226,8 +226,18 @@ describe("DrizzleTicketStore", () => {
 
     it("listSecurityFindings returns all findings for a ticket", async () => {
       const ticket = await store.createTicket({ slug: "sf2", title: "Multi SEC" });
-      await store.addSecurityFinding({ ticketId: ticket.id, code: "SEC-001", text: "a", severity: "high" });
-      await store.addSecurityFinding({ ticketId: ticket.id, code: "SEC-002", text: "b", severity: "medium" });
+      await store.addSecurityFinding({
+        ticketId: ticket.id,
+        code: "SEC-001",
+        text: "a",
+        severity: "high",
+      });
+      await store.addSecurityFinding({
+        ticketId: ticket.id,
+        code: "SEC-002",
+        text: "b",
+        severity: "medium",
+      });
       const list = await store.listSecurityFindings(ticket.id);
       assert.strictEqual(list.length, 2);
     });
@@ -300,8 +310,18 @@ describe("DrizzleTicketStore", () => {
       const ticket = await store.createTicket({ slug: "full-rich", title: "Full rich" });
       await store.addRequirement({ ticketId: ticket.id, code: "FR-001", text: "Req" });
       await store.addAcceptanceCriterion({ ticketId: ticket.id, text: "AC" });
-      await store.addWeakness({ ticketId: ticket.id, code: "W-001", text: "Weak", severity: "low" });
-      await store.addSecurityFinding({ ticketId: ticket.id, code: "SEC-001", text: "Sec", severity: "high" });
+      await store.addWeakness({
+        ticketId: ticket.id,
+        code: "W-001",
+        text: "Weak",
+        severity: "low",
+      });
+      await store.addSecurityFinding({
+        ticketId: ticket.id,
+        code: "SEC-001",
+        text: "Sec",
+        severity: "high",
+      });
       await store.addProvenance({
         ticketId: ticket.id,
         section: "intake",
@@ -356,7 +376,8 @@ describe("DrizzleTicketStore", () => {
 
     it("addWeakness for a non-existent ticket fails", async () => {
       await assert.rejects(
-        async () => store.addWeakness({ ticketId: 9999, code: "W-001", text: "ghost", severity: "low" }),
+        async () =>
+          store.addWeakness({ ticketId: 9999, code: "W-001", text: "ghost", severity: "low" }),
         (err: unknown) => {
           assert.ok(err instanceof Error);
           return true;

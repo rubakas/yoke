@@ -17,12 +17,11 @@ export class NoopTracker implements TrackerProvider {
     this.payload = opts?.fixture ?? DEFAULT_PAYLOAD;
   }
 
-  async ingest(_ref: string): Promise<TrackerPayload> {
-    return this.payload;
+  ingest(_ref: string): Promise<TrackerPayload> {
+    return Promise.resolve(this.payload);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async syncBack(_ref: string, _update: TrackerUpdate): Promise<void> {
-    // intentional no-op
+  syncBack(_ref: string, _update: TrackerUpdate): Promise<void> {
+    return Promise.resolve();
   }
 }

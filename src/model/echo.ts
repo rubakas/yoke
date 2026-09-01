@@ -13,11 +13,11 @@ export class EchoGateway implements ModelGateway {
     this.reply = opts?.reply;
   }
 
-  async chat(messages: ChatMessage[], _opts?: ChatOptions): Promise<ChatResponse> {
+  chat(messages: ChatMessage[], _opts?: ChatOptions): Promise<ChatResponse> {
     if (this.reply !== undefined) {
-      return { content: this.reply };
+      return Promise.resolve({ content: this.reply });
     }
     const last = messages.at(-1);
-    return { content: last ? `echo: ${last.content}` : "" };
+    return Promise.resolve({ content: last ? `echo: ${last.content}` : "" });
   }
 }

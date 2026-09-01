@@ -37,8 +37,8 @@ services:
   phoenix:
     image: arizephoenix/phoenix:latest
     ports:
-      - "6006:6006"   # UI + OTLP/HTTP
-      - "4317:4317"   # OTLP/gRPC
+      - "6006:6006" # UI + OTLP/HTTP
+      - "4317:4317" # OTLP/gRPC
     restart: unless-stopped
 
   # ── Yoke orchestrator (placeholder — uncomment in Stage 2) ────────────────

@@ -1,8 +1,8 @@
 // Tests for NoopTracker — FR-004 (spec 003).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { NoopTracker } from "./noop.js";
 import type { TrackerPayload } from "../module/seams.js";
 

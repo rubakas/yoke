@@ -1,8 +1,8 @@
 // TDD tests for SecurityCheck — security-finding Check module.
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { makeInMemoryDb } from "../db/index.js";
 import { DrizzleTicketStore } from "../store/sqlite.js";
 import { SecurityCheck } from "./security.js";
@@ -28,7 +28,12 @@ const TWO_FINDINGS_RESPONSE = JSON.stringify({
 
 const ONE_BLOCKING_RESPONSE = JSON.stringify({
   findings: [
-    { code: "SEC-001", text: "Unauthenticated endpoint exposed", severity: "critical", blocking: true },
+    {
+      code: "SEC-001",
+      text: "Unauthenticated endpoint exposed",
+      severity: "critical",
+      blocking: true,
+    },
   ],
 });
 

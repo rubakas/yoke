@@ -1,9 +1,9 @@
 // Executor module descriptors — registered by id under the "executor" seam (FR-003, spec 004).
 
-import type { Module } from "../module/types.js";
-import type { Executor } from "../module/seams.js";
 import { ClaudeCodeExecutor } from "./claudeCode.js";
 import { NoopExecutor } from "./noop.js";
+import type { Executor } from "../module/seams.js";
+import type { Module } from "../module/types.js";
 
 export const executorModules: Module<Executor>[] = [
   {

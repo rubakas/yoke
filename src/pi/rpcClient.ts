@@ -10,10 +10,9 @@
 //   <- {"id":"1","result":{...}}
 //   <- {"event":"state","data":{...}}   // unsolicited events (no id)
 
-import { spawn, type ChildProcess } from "node:child_process";
-import { createInterface } from "node:readline";
+import type { ChildProcess } from "node:child_process";
 
-export type PiEvent = { event: string; data: unknown };
+export interface PiEvent { event: string; data: unknown }
 export type EventCallback = (evt: PiEvent) => void;
 
 export class PiRpcClient {
@@ -28,13 +27,13 @@ export class PiRpcClient {
   }
 
   // TODO(FR-002): send a prompt message and resolve with the model response.
-  async prompt(_text: string): Promise<string> {
-    throw new Error("TODO(FR-002): prompt() not implemented");
+  prompt(_text: string): Promise<string> {
+    return Promise.reject(new Error("TODO(FR-002): prompt() not implemented"));
   }
 
   // TODO(FR-002): request current Pi kernel state.
-  async getState(): Promise<unknown> {
-    throw new Error("TODO(FR-002): getState() not implemented");
+  getState(): Promise<unknown> {
+    return Promise.reject(new Error("TODO(FR-002): getState() not implemented"));
   }
 
   // Register a callback for unsolicited Pi events (state changes, tool calls…).

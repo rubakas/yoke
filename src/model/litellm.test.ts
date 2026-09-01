@@ -1,8 +1,8 @@
 // Tests for LiteLLMGateway — ModelGateway backed by the LiteLLM proxy (Layer-0 key isolation).
 // Run via: tsx --test src/**/*.test.ts
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { LiteLLMGateway } from "./litellm.js";
 import type { ChatMessage } from "../module/seams.js";
 
@@ -36,7 +36,10 @@ class FakeFetch {
   }
 
   /** The injectable fetch function. */
-  readonly fetch: typeof fetch = async (input: URL | RequestInfo, init?: RequestInit): Promise<Response> => {
+  readonly fetch: typeof fetch = async (
+    input: URL | RequestInfo,
+    init?: RequestInit
+  ): Promise<Response> => {
     const url = input instanceof Request ? input.url : String(input);
 
     const headers: Record<string, string> = {};
@@ -88,8 +91,8 @@ describe("LiteLLMGateway.chat", () => {
     await gateway.chat(MESSAGES);
 
     assert.strictEqual(fake.requests.length, 1);
-    assert.strictEqual(fake.requests[0]!.url, `${BASE_URL}/chat/completions`);
-    assert.strictEqual(fake.requests[0]!.method, "POST");
+    assert.strictEqual(fake.requests[0].url, `${BASE_URL}/chat/completions`);
+    assert.strictEqual(fake.requests[0].method, "POST");
   });
 
   it("sends Authorization: Bearer <virtualKey> header", async () => {
@@ -102,7 +105,7 @@ describe("LiteLLMGateway.chat", () => {
     );
     await gateway.chat(MESSAGES);
 
-    const authHeader = fake.requests[0]!.headers["Authorization"];
+    const authHeader = fake.requests[0].headers.Authorization;
     assert.strictEqual(authHeader, `Bearer ${VIRTUAL_KEY}`);
   });
 
@@ -116,10 +119,7 @@ describe("LiteLLMGateway.chat", () => {
     );
     await gateway.chat(MESSAGES);
 
-    assert.strictEqual(
-      fake.requests[0]!.headers["Content-Type"],
-      "application/json"
-    );
+    assert.strictEqual(fake.requests[0].headers["Content-Type"], "application/json");
   });
 
   it("sends messages in the request body", async () => {
@@ -137,7 +137,7 @@ describe("LiteLLMGateway.chat", () => {
     );
     await gateway.chat(messages);
 
-    assert.deepStrictEqual(fake.requests[0]!.body["messages"], messages);
+    assert.deepStrictEqual(fake.requests[0].body.messages, messages);
   });
 
   it("sends model from opts when provided", async () => {
@@ -150,7 +150,7 @@ describe("LiteLLMGateway.chat", () => {
     );
     await gateway.chat(MESSAGES, { model: "gpt-4o" });
 
-    assert.strictEqual(fake.requests[0]!.body["model"], "gpt-4o");
+    assert.strictEqual(fake.requests[0].body.model, "gpt-4o");
   });
 
   it("falls back to the constructor default model when opts.model is omitted", async () => {
@@ -163,7 +163,7 @@ describe("LiteLLMGateway.chat", () => {
     );
     await gateway.chat(MESSAGES);
 
-    assert.strictEqual(fake.requests[0]!.body["model"], "claude-3-5-sonnet");
+    assert.strictEqual(fake.requests[0].body.model, "claude-3-5-sonnet");
   });
 
   it("sends temperature when provided in opts", async () => {
@@ -176,7 +176,7 @@ describe("LiteLLMGateway.chat", () => {
     );
     await gateway.chat(MESSAGES, { temperature: 0.7 });
 
-    assert.strictEqual(fake.requests[0]!.body["temperature"], 0.7);
+    assert.strictEqual(fake.requests[0].body.temperature, 0.7);
   });
 
   it("returns the assistant message content from the response", async () => {
@@ -269,11 +269,8 @@ describe("LiteLLMGateway — Layer-0 key isolation", () => {
     );
     await gateway.chat(MESSAGES);
 
-    const bodyStr = JSON.stringify(fake.requests[0]!.body);
-    assert.ok(
-      !bodyStr.includes(REAL_KEY),
-      "Request body must not contain any real provider key"
-    );
+    const bodyStr = JSON.stringify(fake.requests[0].body);
+    assert.ok(!bodyStr.includes(REAL_KEY), "Request body must not contain any real provider key");
   });
 
   it("Authorization header contains only the virtual key, not a real provider key", async () => {
@@ -286,11 +283,8 @@ describe("LiteLLMGateway — Layer-0 key isolation", () => {
     );
     await gateway.chat(MESSAGES);
 
-    const authHeader = fake.requests[0]!.headers["Authorization"] ?? "";
-    assert.ok(
-      authHeader.includes(VIRTUAL_KEY),
-      "Authorization must contain the virtual key"
-    );
+    const authHeader = fake.requests[0].headers.Authorization ?? "";
+    assert.ok(authHeader.includes(VIRTUAL_KEY), "Authorization must contain the virtual key");
     // Virtual key format starts with "sk-virtual-"; a real Anthropic key starts with "sk-ant-"
     assert.ok(
       !authHeader.includes("sk-ant-"),

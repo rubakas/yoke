@@ -1,11 +1,11 @@
 # Stage-4 Audit / Security / Bugfix
 
-| Field        | Value                   |
-|--------------|-------------------------|
-| Feature Name | Stage-4 Audit           |
-| Branch       | `007-stage4-audit`      |
-| Status       | Draft                   |
-| Created      | 2026-09-01              |
+| Field        | Value              |
+| ------------ | ------------------ |
+| Feature Name | Stage-4 Audit      |
+| Branch       | `007-stage4-audit` |
+| Status       | Draft              |
+| Created      | 2026-09-01         |
 
 Parallel review (reviewer + security) via pluggable `Check` modules; findings written to distinct ticket rows; blocking findings trigger a bounded bugfix loop; final gate before the ticket closes.
 
@@ -39,13 +39,13 @@ Blocking findings trigger a bounded fix loop via the Executor; on exhaustion the
 
 ## Requirements
 
-| ID     | Requirement |
-|--------|-------------|
+| ID     | Requirement                                                                                                                       |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | FR-001 | System MUST define a `Check` module interface: `run(ticket) → findings[]`, each finding tagged with severity and blocking status. |
-| FR-002 | System MUST ship a reviewer `Check` and a security `Check` as built-in implementations. |
-| FR-003 | System MUST run all registered `Check` modules in parallel and write findings to distinct ticket rows. |
-| FR-004 | System MUST run a bounded bugfix loop (via the Executor, spec 004) for blocking findings; max iterations from config. |
-| FR-005 | System MUST enforce a final stage gate: no unresolved blocking findings before the ticket advances to `done`. |
+| FR-002 | System MUST ship a reviewer `Check` and a security `Check` as built-in implementations.                                           |
+| FR-003 | System MUST run all registered `Check` modules in parallel and write findings to distinct ticket rows.                            |
+| FR-004 | System MUST run a bounded bugfix loop (via the Executor, spec 004) for blocking findings; max iterations from config.             |
+| FR-005 | System MUST enforce a final stage gate: no unresolved blocking findings before the ticket advances to `done`.                     |
 
 ---
 

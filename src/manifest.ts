@@ -1,13 +1,13 @@
 // Default manifest and bootstrap helper (spec 001-stage1-hardening, ADR-0002).
 // Registers all module descriptors and applies the manifest to a Registry.
 
-import type { Manifest } from "./module/types.js";
-import { Registry } from "./module/registry.js";
-import { trackerModules } from "./tracker/index.js";
-import { modelModules } from "./model/index.js";
-import { storeModules } from "./store/index.js";
-import { executorModules } from "./executor/index.js";
 import { checkModules } from "./checks/index.js";
+import { executorModules } from "./executor/index.js";
+import { modelModules } from "./model/index.js";
+import { type Registry } from "./module/registry.js";
+import { storeModules } from "./store/index.js";
+import { trackerModules } from "./tracker/index.js";
+import type { Manifest } from "./module/types.js";
 
 /** Production manifest — active module per seam for a real Yoke run. */
 export const defaultManifest: Manifest = {

@@ -18,7 +18,7 @@ const defaultRunner: CommandRunner = async (cmd, args) => {
  *  Accepts: "42", "gh#42". */
 function parseRef(ref: string): string {
   const match = /^(?:gh#)?(\d+)$/.exec(ref.trim());
-  if (!match || !match[1]) {
+  if (!match?.[1]) {
     throw new Error(`GitHubTracker: invalid ref "${ref}". Expected "42" or "gh#42".`);
   }
   return match[1];
@@ -33,11 +33,17 @@ export class GitHubTracker implements TrackerProvider {
 
   async ingest(ref: string): Promise<TrackerPayload> {
     const issue = parseRef(ref);
-    const raw = await this.runner("gh", ["issue", "view", issue, "--json", "title,body,labels,url"]);
+    const raw = await this.runner("gh", [
+      "issue",
+      "view",
+      issue,
+      "--json",
+      "title,body,labels,url",
+    ]);
     const data = JSON.parse(raw) as {
       title?: string | null;
       body?: string | null;
-      labels?: Array<{ name: string }> | null;
+      labels?: { name: string }[] | null;
       url?: string | null;
     };
 
