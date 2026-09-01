@@ -1,7 +1,7 @@
 // FR-008: preflight doctor — checks external prerequisites and reports issues.
 
 import { execFile, execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +22,8 @@ export interface CheckResult {
 export interface DoctorProbes {
   nodeVersion: () => string;
   which: (bin: string) => string | undefined;
+  /** Returns all resolved locations of bin in PATH order. */
+  whichAll: (bin: string) => string[];
   exec: (cmd: string, args: string[]) => Promise<{ code: number; stdout: string; stderr: string }>;
   exists: (path: string) => boolean;
   fetchJson: (url: string) => Promise<unknown>;
@@ -113,7 +115,8 @@ export async function runDoctor(probes: DoctorProbes): Promise<CheckResult[]> {
 
   // 5. claude CLI on PATH + logged in (required)
   {
-    const claudeBin = probes.which("claude");
+    const allClaudePaths = probes.whichAll("claude");
+    const claudeBin = allClaudePaths[0];
     if (!claudeBin) {
       results.push({
         name: "claude CLI",
@@ -122,6 +125,31 @@ export async function runDoctor(probes: DoctorProbes): Promise<CheckResult[]> {
         hint: "Install from https://docs.claude.com/en/docs/claude-code",
       });
     } else {
+      // Fetch CLI version (first line of --version output)
+      const versionResult = await probes.exec("claude", ["--version"]);
+      const versionLine = versionResult.stdout.split("\n")[0].trim();
+
+      // Detect shadowed installs — multiple distinct real paths in PATH order
+      if (allClaudePaths.length > 1) {
+        const realPaths = allClaudePaths.map((p) => {
+          try {
+            return realpathSync(p);
+          } catch {
+            return p;
+          }
+        });
+        const distinctRealPaths = [...new Set(realPaths)];
+        if (distinctRealPaths.length > 1) {
+          results.push({
+            name: "claude CLI shadowed",
+            status: "warn",
+            detail: allClaudePaths.join(", "),
+            hint: "remove stale installs (e.g. `npm -g uninstall @anthropic-ai/claude-code` under old Node versions); the FIRST one in PATH is what will run",
+          });
+        }
+      }
+
+      // Auth check on the first-in-PATH binary
       const authResult = await probes.exec("claude", ["auth", "status", "--json"]);
       let loggedIn = false;
       if (authResult.code === 0) {
@@ -134,13 +162,14 @@ export async function runDoctor(probes: DoctorProbes): Promise<CheckResult[]> {
           // unparseable output — treat as not logged in
         }
       }
+      const versionSuffix = versionLine ? ` (${versionLine})` : "";
       if (loggedIn) {
-        results.push({ name: "claude CLI", status: "ok", detail: claudeBin });
+        results.push({ name: "claude CLI", status: "ok", detail: `${claudeBin}${versionSuffix}` });
       } else {
         results.push({
           name: "claude CLI",
           status: "fail",
-          detail: `found at ${claudeBin} but not logged in`,
+          detail: `found at ${claudeBin}${versionSuffix} but not logged in`,
           hint: "claude auth login",
         });
       }
@@ -261,6 +290,18 @@ export function defaultProbes(): DoctorProbes {
         return result || undefined;
       } catch {
         return undefined;
+      }
+    },
+
+    whichAll: (bin) => {
+      try {
+        const result = execFileSync("bash", ["-lc", `which -a ${bin}`], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        return result ? result.split("\n").filter(Boolean) : [];
+      } catch {
+        return [];
       }
     },
 

@@ -16,7 +16,11 @@ function makeOkProbes(overrides: Partial<DoctorProbes> = {}): DoctorProbes {
   return {
     nodeVersion: () => "22.17.1",
     which: (bin) => `/usr/bin/${bin}`,
+    whichAll: (bin) => [`/usr/bin/${bin}`],
     exec: async (cmd, args) => {
+      if (cmd === "claude" && args[0] === "--version") {
+        return { code: 0, stdout: "claude 2.1.257\n", stderr: "" };
+      }
       if (cmd === "claude" && args.includes("auth")) {
         return { code: 0, stdout: JSON.stringify({ loggedIn: true }), stderr: "" };
       }
@@ -71,6 +75,7 @@ describe("runDoctor", () => {
     const results = await runDoctor(
       makeOkProbes({
         which: (bin) => (bin === "claude" ? undefined : `/usr/bin/${bin}`),
+        whichAll: (bin) => (bin === "claude" ? [] : [`/usr/bin/${bin}`]),
       })
     );
     const check = results.find((r) => r.name === "claude CLI");
@@ -101,6 +106,9 @@ describe("runDoctor", () => {
     const results = await runDoctor(
       makeOkProbes({
         exec: async (cmd, args) => {
+          if (cmd === "claude" && args[0] === "--version") {
+            return { code: 0, stdout: "claude 2.1.257\n", stderr: "" };
+          }
           if (cmd === "claude" && args.includes("auth")) {
             return { code: 1, stdout: "", stderr: "not logged in" };
           }
@@ -112,6 +120,39 @@ describe("runDoctor", () => {
     const check = results.find((r) => r.name === "claude CLI");
     assert.ok(check);
     assert.equal(check.status, "fail");
+  });
+
+  it("claude CLI version appears in detail", async () => {
+    const results = await runDoctor(makeOkProbes());
+    const check = results.find((r) => r.name === "claude CLI");
+    assert.ok(check, "claude CLI check missing");
+    assert.ok(check.detail.includes("claude 2.1.257"), `detail: ${check.detail}`);
+  });
+
+  it("claude CLI shadowed → warn listing both paths", async () => {
+    const results = await runDoctor(
+      makeOkProbes({
+        whichAll: (bin) =>
+          bin === "claude"
+            ? ["/nvm/versions/node/v22.17.1/bin/claude", "/home/user/.local/bin/claude"]
+            : [`/usr/bin/${bin}`],
+      })
+    );
+    const warn = results.find((r) => r.name === "claude CLI shadowed");
+    assert.ok(warn, "shadow warn missing");
+    assert.equal(warn.status, "warn");
+    assert.ok(
+      warn.detail.includes("/nvm/versions/node/v22.17.1/bin/claude"),
+      `detail: ${warn.detail}`
+    );
+    assert.ok(warn.detail.includes("/home/user/.local/bin/claude"), `detail: ${warn.detail}`);
+    assert.ok(warn.hint?.includes("npm -g uninstall"), `hint: ${warn.hint}`);
+  });
+
+  it("claude CLI single path → no shadow warn", async () => {
+    const results = await runDoctor(makeOkProbes());
+    const warn = results.find((r) => r.name === "claude CLI shadowed");
+    assert.equal(warn, undefined, "unexpected shadow warn");
   });
 
   it("Rivet missing → fail with brew hint", async () => {

@@ -264,6 +264,14 @@ No engine code (graph execution, debugger, node types) was written — all is ri
    - ws://localhost:21888 is unauthenticated.
    - OK for single-machine; document "do not expose" in production deployment ADR.
 
+5. **PATH-shadowed stale `claude` binaries** (E1, E7):
+   - When `nvm use` places an old Node's global bin dir first in PATH, a stale `@anthropic-ai/claude-code` installed under that Node version silently shadows the real CLI — `runClaudeCli` spawns the wrong binary and `claude auth status` may behave unexpectedly (e.g., reporting "not logged in" when the user is logged in under the current CLI).
+   - `pnpm run doctor` now detects and warns when `which -a claude` finds multiple distinct real paths, listing them in PATH order.
+
+6. **`claude auth status` requires login-shell Keychain context** (E1):
+   - Fully stripped environments (e.g., `env -i`) report a false "not logged in" because the Keychain is unavailable without the user's login-shell context.
+   - Bootstrap and `runClaudeCli` are expected to run from the operator's interactive login shell; CI/container use requires explicit credential forwarding.
+
 ---
 
 ## Operator Checklist for E4 & E6
