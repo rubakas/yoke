@@ -1,0 +1,125 @@
+// FR-002: Spawn the local claude CLI for subscription-authenticated LLM calls.
+
+import { spawn as defaultSpawn } from "node:child_process";
+import type { ModelRegistry } from "./registry.js";
+import type { ExternalFunction } from "@ironclad/rivet-node";
+
+export type SpawnFn = typeof defaultSpawn;
+
+export interface RunCliOptions {
+  model?: string;
+  cwd?: string;
+  signal?: AbortSignal;
+  extraArgs?: string[];
+}
+
+export interface RunCliResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  durationMs: number;
+}
+
+const SCRUBBED_KEYS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"];
+
+export function runClaudeCli(
+  prompt: string,
+  opts: RunCliOptions = {},
+  deps: { spawn?: SpawnFn; env?: NodeJS.ProcessEnv } = {}
+): Promise<RunCliResult> {
+  const { model, cwd, signal, extraArgs = [] } = opts;
+  const spawnFn = deps.spawn ?? defaultSpawn;
+
+  // Layer-0: scrub provider keys before passing env to child
+  const rawEnv = deps.env ?? process.env;
+  const env: NodeJS.ProcessEnv = { ...rawEnv };
+  for (const key of SCRUBBED_KEYS) delete env[key];
+
+  const args = [
+    "-p",
+    prompt,
+    "--output-format",
+    "text",
+    ...(model ? ["--model", model] : []),
+    ...extraArgs,
+  ];
+
+  const start = Date.now();
+
+  return new Promise((resolve, reject) => {
+    const child = spawnFn("claude", args, { env, cwd });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+
+    // No interactive input — close stdin immediately
+    child.stdin.end();
+
+    const onAbort = () => {
+      child.kill("SIGTERM");
+    };
+
+    if (signal) {
+      if (signal.aborted) {
+        child.kill("SIGTERM");
+        reject(new DOMException("Claude CLI aborted before start", "AbortError"));
+        return;
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+
+    child.on("close", (code) => {
+      if (signal) signal.removeEventListener("abort", onAbort);
+
+      const durationMs = Date.now() - start;
+
+      if (signal?.aborted) {
+        reject(new DOMException("Claude CLI aborted", "AbortError"));
+        return;
+      }
+
+      const exitCode = code ?? -1;
+      if (exitCode !== 0) {
+        const tail = stderr.slice(-500);
+        reject(new Error(`claude exited with code ${exitCode}\nstderr: ${tail}`));
+        return;
+      }
+
+      resolve({ stdout, stderr, exitCode, durationMs });
+    });
+
+    child.on("error", (err) => {
+      if (signal) signal.removeEventListener("abort", onAbort);
+      reject(err);
+    });
+  });
+}
+
+export function makeRunClaudeCliFunction(
+  registry: ModelRegistry,
+  deps?: { spawn?: SpawnFn; env?: NodeJS.ProcessEnv }
+): ExternalFunction {
+  return async (context, prompt, modelId) => {
+    const mid = (modelId as string | undefined) ?? "claude-sonnet";
+    const entry = registry.resolve(mid);
+    if (entry.transport !== "cli") {
+      throw new Error(`Model "${mid}" has transport "${entry.transport}", expected "cli"`);
+    }
+    const result = await runClaudeCli(
+      prompt as string,
+      {
+        model: entry.cli?.model,
+        signal: context.signal,
+      },
+      deps ?? {}
+    );
+    return { type: "string", value: result.stdout.trim() };
+  };
+}
