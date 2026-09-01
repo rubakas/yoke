@@ -1,11 +1,11 @@
 # Spike: Rivet visual engine
 
-| Field        | Value             |
-| ------------ | ----------------- |
+| Field        | Value                      |
+| ------------ | -------------------------- |
 | Feature Name | Spike: Rivet visual engine |
-| Branch       | `011-spike-rivet` |
-| Status       | Draft             |
-| Created      | 2026-09-01        |
+| Branch       | `011-spike-rivet`          |
+| Status       | Draft                      |
+| Created      | 2026-09-01                 |
 
 **Context:** Yoke is pivoting from a bespoke TypeScript pipeline to a visual, node-graph workflow authoring and execution system. The operator authors workflows visually, watches execution live, and each node/step selects its own model and transport (local `claude`/`codex` CLI via subscription auth, or API models via OpenRouter/Ollama/LiteLLM). Constraint: OSI open-source, self-hosted, minimal bespoke code.
 
@@ -93,15 +93,15 @@ The whole tool comes up from a fresh checkout with one command; external prereqs
 
 ## Requirements
 
-| ID     | Requirement                                                                                                                                           |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-001 | Set up a `@ironclad/rivet-node` HOST process (TypeScript) that runs a Rivet graph headless and can be debugged/authored remotely via Rivet desktop editor. |
-| FR-002 | Register External Function `runClaudeCli(prompt, opts)` that spawns the user's local `claude -p` with subscription auth, passes the prompt, and returns output. |
-| FR-003 | Register External Function `resolveModel(nodeId)` that maps a node's configured model ID to either a Rivet API model config (LiteLLM/Ollama baseURL) or to `runClaudeCli`. |
-| FR-004 | Author the "spec-creation" workflow in Rivet (`.rivet-project` file): 6 ordered steps (intake, enrich, critic, security, approve, create-ticket). |
-| FR-005 | Use an External Call node for CLI steps (intake, critic, security) and a User Input node for the approve HITL gate. |
-| FR-006 | Register a host function to persist the hardened spec into Yoke's SQLite `tickets` store (reuse `DrizzleTicketStore`). |
-| FR-007 | Verify the host can tolerate long-running `claude -p` calls (minutes) without timing out. |
+| ID     | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-001 | Set up a `@ironclad/rivet-node` HOST process (TypeScript) that runs a Rivet graph headless and can be debugged/authored remotely via Rivet desktop editor.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| FR-002 | Register External Function `runClaudeCli(prompt, opts)` that spawns the user's local `claude -p` with subscription auth, passes the prompt, and returns output.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| FR-003 | Register External Function `resolveModel(nodeId)` that maps a node's configured model ID to either a Rivet API model config (LiteLLM/Ollama baseURL) or to `runClaudeCli`.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| FR-004 | Author the "spec-creation" workflow in Rivet (`.rivet-project` file): 6 ordered steps (intake, enrich, critic, security, approve, create-ticket).                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| FR-005 | Use an External Call node for CLI steps (intake, critic, security) and a User Input node for the approve HITL gate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-006 | Register a host function to persist the hardened spec into Yoke's SQLite `tickets` store (reuse `DrizzleTicketStore`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| FR-007 | Verify the host can tolerate long-running `claude -p` calls (minutes) without timing out.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | FR-008 | The spike MUST be self-assembling: a SINGLE bootstrap command (e.g. `pnpm bootstrap` / `yoke up`) brings the whole tool up from a fresh checkout — installs dependencies, builds, runs DB migrations, wires the `rivet-node` host + model registry + host functions + SQLite store, and launches it — with minimal manual steps. It MUST run a preflight/"doctor" check for external prerequisites it cannot install itself (Rivet desktop app present; `claude`/`codex` CLI installed AND logged in; Node ≥22) and clearly report anything missing with a fix hint. The bootstrap MUST be idempotent / re-runnable. |
 
 ---
@@ -110,16 +110,16 @@ The whole tool comes up from a fresh checkout with one command; external prereqs
 
 Score each PASS / PARTIAL / FAIL:
 
-| ID  | Criterion                                                                                                                                          | Notes                                                                   |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| E1  | **Local CLI on host:** a node runs the user's local `claude -p` (subscription auth) and returns its output.                                        | Make-or-break. Must execute with real auth, not mock.                   |
-| E2  | **Per-node model routing, both transports:** different models on different nodes, at least one CLI node and one API node (LiteLLM/Ollama baseURL). | Tests the flexibility to mix CLI + API without rewrites.                |
-| E3  | **HITL gate:** the `approve` step pauses execution and resumes on human approval.                                                                  | Gate must block downstream steps until manual interaction.              |
-| E4  | **Live progress:** the run's per-node progress/status is visible in the tool's UI.                                                                | Operator can watch without polling; UI updates in real time.            |
-| E5  | **Yoke integration:** a node can call Yoke's existing TypeScript domain logic / SQLite ticket store. (How cleanly?)                                | Measures coupling friction; lower is better.                           |
-| E6  | **Authoring UX:** how it feels to visually build/edit the sequence and change a node's model.                                                     | Subjective; note pain points, surprises, learnability.                 |
-| E7  | **Effort / bespoke surface:** rough LOC + pieces we had to write ourselves; maintainability read.                                                 | Gauge long-term maintenance burden.                                     |
-| E8  | **Fit & trust:** self-host, no paid tiers, no provider key in-process for CLI nodes, "one place" feel (operator runs one host and attaches).      | Aligns with Yoke's design principles.                                   |
+| ID  | Criterion                                                                                                                                          | Notes                                                        |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| E1  | **Local CLI on host:** a node runs the user's local `claude -p` (subscription auth) and returns its output.                                        | Make-or-break. Must execute with real auth, not mock.        |
+| E2  | **Per-node model routing, both transports:** different models on different nodes, at least one CLI node and one API node (LiteLLM/Ollama baseURL). | Tests the flexibility to mix CLI + API without rewrites.     |
+| E3  | **HITL gate:** the `approve` step pauses execution and resumes on human approval.                                                                  | Gate must block downstream steps until manual interaction.   |
+| E4  | **Live progress:** the run's per-node progress/status is visible in the tool's UI.                                                                 | Operator can watch without polling; UI updates in real time. |
+| E5  | **Yoke integration:** a node can call Yoke's existing TypeScript domain logic / SQLite ticket store. (How cleanly?)                                | Measures coupling friction; lower is better.                 |
+| E6  | **Authoring UX:** how it feels to visually build/edit the sequence and change a node's model.                                                      | Subjective; note pain points, surprises, learnability.       |
+| E7  | **Effort / bespoke surface:** rough LOC + pieces we had to write ourselves; maintainability read.                                                  | Gauge long-term maintenance burden.                          |
+| E8  | **Fit & trust:** self-host, no paid tiers, no provider key in-process for CLI nodes, "one place" feel (operator runs one host and attaches).       | Aligns with Yoke's design principles.                        |
 
 ---
 
