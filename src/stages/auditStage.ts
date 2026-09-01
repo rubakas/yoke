@@ -1,7 +1,14 @@
 // Stage-4 adapter — runs Check modules in parallel, persists findings, drives bounded bugfix loop.
 
 import { randomUUID } from "node:crypto";
-import type { Stage, StageContext, StageResult, FullTicket, Finding, Check } from "../module/seams.js";
+import type {
+  Stage,
+  StageContext,
+  StageResult,
+  FullTicket,
+  Finding,
+  Check,
+} from "../module/seams.js";
 
 function renderBugfixSpec(ticket: FullTicket, blocking: Finding[]): string {
   const lines: string[] = [];
@@ -49,7 +56,7 @@ export class AuditStage implements Stage {
         checks.map(async (check) => ({
           check,
           findings: await check.run(ctx.ticketId, { model: ctx.model, store: ctx.store }),
-        })),
+        }))
       );
       blocking = lastResults.flatMap((r) => r.findings).filter((f) => f.blocking);
       if (blocking.length === 0) break;

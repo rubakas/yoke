@@ -54,14 +54,14 @@ Attaching from a remote machine is gated by bearer-token auth (Tailscale/SSH for
 
 ## Endpoints
 
-| Method | Path                  | Auth | Description                                    |
-| ------ | --------------------- | ---- | ---------------------------------------------- |
-| GET    | `/health`             | No   | Returns `{ok:true}` — liveness probe           |
-| GET    | `/runs`               | Yes  | List all tickets as `[{id,title,state,stageRuns}]` |
-| GET    | `/runs/:id`           | Yes  | Full ticket detail + stageRuns (404 if missing)|
-| GET    | `/runs/:id/events`    | Yes  | SSE stream of TelemetryEvents for that ticket  |
-| POST   | `/runs`               | Yes  | Start a run; body `{issueNumber?,freeText?}`; returns 202 `{ticketId}` |
-| POST   | `/runs/:id/steer`     | Yes  | Body `{command:"pause"|"resume"|"abort"}`; returns `{ok:true}` |
+| Method | Path               | Auth | Description                                                            |
+| ------ | ------------------ | ---- | ---------------------------------------------------------------------- |
+| GET    | `/health`          | No   | Returns `{ok:true}` — liveness probe                                   |
+| GET    | `/runs`            | Yes  | List all tickets as `[{id,title,state,stageRuns}]`                     |
+| GET    | `/runs/:id`        | Yes  | Full ticket detail + stageRuns (404 if missing)                        |
+| GET    | `/runs/:id/events` | Yes  | SSE stream of TelemetryEvents for that ticket                          |
+| POST   | `/runs`            | Yes  | Start a run; body `{issueNumber?,freeText?}`; returns 202 `{ticketId}` |
+| POST   | `/runs/:id/steer`  | Yes  | Body `{command:"pause"                                                 | "resume" | "abort"}`; returns `{ok:true}` |
 
 Auth: `Authorization: Bearer <YOKE_ATTACH_TOKEN>`. When `YOKE_ATTACH_TOKEN` is unset, all
 requests are permitted (local-only mode).

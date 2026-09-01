@@ -72,7 +72,7 @@ function parseJson<T>(content: string): T | null {
 
 async function draftStep(deps: HardenDeps, input: HardenInput): Promise<number> {
   const seed = input.ghIssue;
-  const rawTitle = seed?.title ?? (input.freeText?.substring(0, 80).trim() ?? "Untitled");
+  const rawTitle = seed?.title ?? input.freeText?.substring(0, 80).trim() ?? "Untitled";
   const slug = slugify(rawTitle);
 
   const intent = await deps.io.ask("What is the primary intent of this task?");
@@ -234,7 +234,7 @@ async function gateStep(deps: HardenDeps, ticketId: number): Promise<GateResult>
 
 export async function runHardening(
   deps: HardenDeps,
-  input: HardenTicketInput,
+  input: HardenTicketInput
 ): Promise<HardenResult> {
   const { ticketId } = input;
 

@@ -1,11 +1,11 @@
 # Observability
 
-| Field        | Value               |
-| ------------ | ------------------- |
-| Feature Name | Observability       |
-| Branch       | `009-observability` |
+| Field        | Value                |
+| ------------ | -------------------- |
+| Feature Name | Observability        |
+| Branch       | `009-observability`  |
 | Status       | Active (MVP shipped) |
-| Created      | 2026-09-01          |
+| Created      | 2026-09-01           |
 
 The pipeline emits spans and structured logs through the `TelemetrySink` seam (spec 002). The MVP delivers a dependency-free JSONL sink; OTLP→Phoenix export is a deferred swappable module (ADR-0009).
 
@@ -13,14 +13,14 @@ The pipeline emits spans and structured logs through the `TelemetrySink` seam (s
 
 ## Spec Kit
 
-| Layer    | Tooling                                      |
-| -------- | -------------------------------------------- |
-| Sink     | `JsonlTelemetrySink` — `node:fs` + `node:crypto` |
-| Noop     | `NoopTelemetrySink` — discards all events    |
-| Format   | One JSON line per event (`span-start`, `span-end`, `log`) |
-| Output   | `YOKE_TELEMETRY_PATH` (default `./yoke-telemetry.jsonl`) |
+| Layer    | Tooling                                                          |
+| -------- | ---------------------------------------------------------------- |
+| Sink     | `JsonlTelemetrySink` — `node:fs` + `node:crypto`                 |
+| Noop     | `NoopTelemetrySink` — discards all events                        |
+| Format   | One JSON line per event (`span-start`, `span-end`, `log`)        |
+| Output   | `YOKE_TELEMETRY_PATH` (default `./yoke-telemetry.jsonl`)         |
 | Live bus | `onEvent` hook on `JsonlSinkDeps` — orchestrator subscribes here |
-| Future   | `OtelSink` module — manifest flip, no core changes needed |
+| Future   | `OtelSink` module — manifest flip, no core changes needed        |
 
 ---
 
@@ -52,13 +52,13 @@ A complete pipeline run produces a JSONL file with a `run` span wrapping per-sta
 
 ## Requirements
 
-| ID     | Requirement                                                                                                                                    |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-001 | System MUST emit spans and structured logs through the `TelemetrySink` seam at Run and Stage boundaries.                                       |
-| FR-002 | All spans and logs MUST carry `yoke.*` semantic attributes (e.g. `yoke.stage`, `yoke.ticket`).                                                 |
+| ID     | Requirement                                                                                                                                          |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-001 | System MUST emit spans and structured logs through the `TelemetrySink` seam at Run and Stage boundaries.                                             |
+| FR-002 | All spans and logs MUST carry `yoke.*` semantic attributes (e.g. `yoke.stage`, `yoke.ticket`).                                                       |
 | FR-003 | The JSONL sink MUST write events to a configurable file path (`YOKE_TELEMETRY_PATH`); OTLP→Phoenix export is a deferred swappable module (ADR-0009). |
-| FR-004 | The telemetry exporter MUST be wired through the `TelemetrySink` seam (spec 002), making it swappable via the module manifest.                 |
-| FR-005 | File-write failures in the sink MUST be silently swallowed — telemetry must never abort a pipeline run.                                        |
+| FR-004 | The telemetry exporter MUST be wired through the `TelemetrySink` seam (spec 002), making it swappable via the module manifest.                       |
+| FR-005 | File-write failures in the sink MUST be silently swallowed — telemetry must never abort a pipeline run.                                              |
 
 ---
 

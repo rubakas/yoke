@@ -26,7 +26,7 @@ export interface PipelineResult {
 
 export async function runPipeline(
   deps: PipelineDeps,
-  input: { ticketId: number },
+  input: { ticketId: number }
 ): Promise<PipelineResult> {
   const { ticketId } = input;
   const runs = await deps.store.listStageRuns(ticketId);
@@ -43,7 +43,10 @@ export async function runPipeline(
       return { ticketId, status: "blocked", stoppedAt: stage.name, reason: "aborted by operator" };
     }
 
-    const span = deps.telemetry?.startSpan(`stage:${stage.name}`, { ticketId, "yoke.stage": stage.name });
+    const span = deps.telemetry?.startSpan(`stage:${stage.name}`, {
+      ticketId,
+      "yoke.stage": stage.name,
+    });
     const run = await deps.store.startStageRun(ticketId, stage.name);
 
     try {

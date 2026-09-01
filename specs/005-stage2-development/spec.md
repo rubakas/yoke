@@ -39,14 +39,14 @@ The stage gate passes only when the Executor reports at least one changed file.
 
 ## Requirements
 
-| ID     | Requirement                                                                                    |
-| ------ | ---------------------------------------------------------------------------------------------- |
-| FR-001 | System MUST consume a `ready` ticket as Stage-2 input; any other state yields `blocked`.       |
-| FR-002 | System MUST render an implementation spec from the ticket (title, body, requirements, AC, weaknesses/security). |
-| FR-003 | System MUST drive the configured Executor (spec 004) with the rendered spec and workdir.       |
-| FR-004 | System MUST record a provenance row with `section="develop"` linking the run to the ticket.   |
+| ID     | Requirement                                                                                                           |
+| ------ | --------------------------------------------------------------------------------------------------------------------- |
+| FR-001 | System MUST consume a `ready` ticket as Stage-2 input; any other state yields `blocked`.                              |
+| FR-002 | System MUST render an implementation spec from the ticket (title, body, requirements, AC, weaknesses/security).       |
+| FR-003 | System MUST drive the configured Executor (spec 004) with the rendered spec and workdir.                              |
+| FR-004 | System MUST record a provenance row with `section="develop"` linking the run to the ticket.                           |
 | FR-005 | System MUST gate on executor-reported changes: if `changedFiles` is empty, return `blocked` and do NOT advance state. |
-| FR-006 | On gate pass, system MUST advance ticket state to `developed`.                                 |
+| FR-006 | On gate pass, system MUST advance ticket state to `developed`.                                                        |
 
 ---
 

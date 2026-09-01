@@ -131,11 +131,7 @@ export class DrizzleTicketStore implements TicketStore {
 
   listWeaknesses(ticketId: number): Promise<WeaknessRow[]> {
     return Promise.resolve(
-      this.db
-        .select()
-        .from(schema.weaknesses)
-        .where(eq(schema.weaknesses.ticketId, ticketId))
-        .all()
+      this.db.select().from(schema.weaknesses).where(eq(schema.weaknesses.ticketId, ticketId)).all()
     );
   }
 
@@ -151,11 +147,7 @@ export class DrizzleTicketStore implements TicketStore {
 
   listProvenance(ticketId: number): Promise<ProvenanceRow[]> {
     return Promise.resolve(
-      this.db
-        .select()
-        .from(schema.provenance)
-        .where(eq(schema.provenance.ticketId, ticketId))
-        .all()
+      this.db.select().from(schema.provenance).where(eq(schema.provenance.ticketId, ticketId)).all()
     );
   }
 
@@ -177,7 +169,7 @@ export class DrizzleTicketStore implements TicketStore {
   completeStageRun(
     runId: number,
     status: "passed" | "blocked" | "failed",
-    reason?: string,
+    reason?: string
   ): Promise<void> {
     this.db
       .update(schema.stageRuns)
@@ -194,7 +186,7 @@ export class DrizzleTicketStore implements TicketStore {
         .from(schema.stageRuns)
         .where(eq(schema.stageRuns.ticketId, ticketId))
         .orderBy(asc(schema.stageRuns.id))
-        .all(),
+        .all()
     );
   }
 }

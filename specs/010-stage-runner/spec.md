@@ -1,11 +1,11 @@
 # Stage Runner (pipeline)
 
-| Field        | Value                    |
-| ------------ | ------------------------ |
-| Feature Name | Stage Runner (pipeline)  |
-| Branch       | `010-stage-runner`       |
-| Status       | Draft                    |
-| Created      | 2026-09-01               |
+| Field        | Value                   |
+| ------------ | ----------------------- |
+| Feature Name | Stage Runner (pipeline) |
+| Branch       | `010-stage-runner`      |
+| Status       | Draft                   |
+| Created      | 2026-09-01              |
 
 The pipeline core — sequences an ordered list of Stage modules for a ticket, gating on each stage's result. Per-stage execution is recorded in a `stage_runs` table (source of truth for resume and per-stage logs). A blocked or failed stage stops the pipeline and leaves the ticket in a resumable state. Re-running resumes from the first non-passed stage.
 
@@ -75,15 +75,15 @@ An optional TelemetrySink receives a span per executed stage.
 
 ## Requirements
 
-| ID     | Requirement                                                                                                                                           |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-001 | System MUST execute stages in declared order, one at a time.                                                                                          |
-| FR-002 | System MUST stop the pipeline when a stage returns status "blocked" or "failed", leaving remaining stages unexecuted.                                 |
-| FR-003 | System MUST record a stage_run row for each executed stage with stageName, status ("running"→final), reason, startedAt, and endedAt.                  |
-| FR-004 | System MUST skip stages that already have a "passed" stage_run for the given ticketId (resume support).                                               |
-| FR-005 | System MUST emit a telemetry span per executed stage when a TelemetrySink is provided.                                                                |
-| FR-006 | System MUST record a stage_run with status "failed" and the error message when a stage throws an unexpected error.                                    |
-| FR-007 | System MUST return a PipelineResult with ticketId, status, stoppedAt (stage name or null), and optional reason.                                       |
+| ID     | Requirement                                                                                                                          |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| FR-001 | System MUST execute stages in declared order, one at a time.                                                                         |
+| FR-002 | System MUST stop the pipeline when a stage returns status "blocked" or "failed", leaving remaining stages unexecuted.                |
+| FR-003 | System MUST record a stage_run row for each executed stage with stageName, status ("running"→final), reason, startedAt, and endedAt. |
+| FR-004 | System MUST skip stages that already have a "passed" stage_run for the given ticketId (resume support).                              |
+| FR-005 | System MUST emit a telemetry span per executed stage when a TelemetrySink is provided.                                               |
+| FR-006 | System MUST record a stage_run with status "failed" and the error message when a stage throws an unexpected error.                   |
+| FR-007 | System MUST return a PipelineResult with ticketId, status, stoppedAt (stage name or null), and optional reason.                      |
 
 ---
 

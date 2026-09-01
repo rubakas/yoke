@@ -39,7 +39,10 @@ function renderImplSpec(ticket: FullTicket): string {
     }
   }
 
-  lines.push("", "Implement this in the working directory, following the repository's conventions.");
+  lines.push(
+    "",
+    "Implement this in the working directory, following the repository's conventions."
+  );
 
   return lines.join("\n");
 }

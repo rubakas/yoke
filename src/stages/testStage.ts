@@ -1,7 +1,13 @@
 // Stage-3 adapter — runs the project test suite, drives a bounded fix loop via the Executor on failure.
 
 import { randomUUID } from "node:crypto";
-import type { Stage, StageContext, StageResult, FullTicket, ProcessResult } from "../module/seams.js";
+import type {
+  Stage,
+  StageContext,
+  StageResult,
+  FullTicket,
+  ProcessResult,
+} from "../module/seams.js";
 
 const MAX_OUTPUT_IN_SPEC = 4000;
 
@@ -25,7 +31,7 @@ function renderFixSpec(ticket: FullTicket, failingOutput: string): string {
     failingOutput.slice(-MAX_OUTPUT_IN_SPEC),
     "```",
     "",
-    "Add or repair tests covering the acceptance criteria above and make the test suite pass.",
+    "Add or repair tests covering the acceptance criteria above and make the test suite pass."
   );
 
   return lines.join("\n");

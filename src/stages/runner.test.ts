@@ -98,7 +98,7 @@ function makeDeps(
   ticketId: number,
   stages: Stage[],
   telemetry?: TelemetrySink,
-  control?: RunControl,
+  control?: RunControl
 ): PipelineDeps {
   return {
     stages,
@@ -144,7 +144,10 @@ describe("runPipeline", () => {
       const deps = makeDeps(store, ticketId, [new PassStage("a"), new PassStage("b")]);
       await runPipeline(deps, { ticketId });
       const runs = await store.listStageRuns(ticketId);
-      assert.ok(runs.every((r) => r.endedAt !== null), "all runs should have endedAt");
+      assert.ok(
+        runs.every((r) => r.endedAt !== null),
+        "all runs should have endedAt"
+      );
     });
   });
 
@@ -233,12 +236,7 @@ describe("runPipeline", () => {
   describe("telemetry", () => {
     it("emits one span per executed (non-skipped) stage", async () => {
       const telemetry = new FakeTelemetry();
-      const deps = makeDeps(
-        store,
-        ticketId,
-        [new PassStage("x"), new PassStage("y")],
-        telemetry,
-      );
+      const deps = makeDeps(store, ticketId, [new PassStage("x"), new PassStage("y")], telemetry);
       await runPipeline(deps, { ticketId });
 
       assert.strictEqual(telemetry.spans.length, 2);
@@ -248,18 +246,13 @@ describe("runPipeline", () => {
 
     it("calls span.end() for each executed stage", async () => {
       const telemetry = new FakeTelemetry();
-      const deps = makeDeps(
-        store,
-        ticketId,
-        [new PassStage("x"), new PassStage("y")],
-        telemetry,
-      );
+      const deps = makeDeps(store, ticketId, [new PassStage("x"), new PassStage("y")], telemetry);
       await runPipeline(deps, { ticketId });
 
       assert.strictEqual(telemetry.handles.length, 2);
       assert.ok(
         telemetry.handles.every((h) => h.attrs.length === 1),
-        "each span handle should have end() called once",
+        "each span handle should have end() called once"
       );
     });
 
@@ -272,7 +265,7 @@ describe("runPipeline", () => {
         store,
         ticketId,
         [new MustNotRunStage("a"), new PassStage("b")],
-        telemetry,
+        telemetry
       );
       await runPipeline(deps, { ticketId });
 
@@ -291,7 +284,7 @@ describe("runPipeline", () => {
         ticketId,
         [new MustNotRunStage("first"), new MustNotRunStage("second")],
         undefined,
-        control,
+        control
       );
       const result = await runPipeline(deps, { ticketId });
 
@@ -320,7 +313,7 @@ describe("runPipeline", () => {
         ticketId,
         [stageA, new MustNotRunStage("B")],
         undefined,
-        control,
+        control
       );
       const result = await runPipeline(deps, { ticketId });
 

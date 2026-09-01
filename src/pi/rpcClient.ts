@@ -12,7 +12,10 @@
 
 import type { ChildProcess } from "node:child_process";
 
-export interface PiEvent { event: string; data: unknown }
+export interface PiEvent {
+  event: string;
+  data: unknown;
+}
 export type EventCallback = (evt: PiEvent) => void;
 
 export class PiRpcClient {

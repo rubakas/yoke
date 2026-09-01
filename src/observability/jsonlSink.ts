@@ -40,8 +40,7 @@ export class JsonlTelemetrySink implements TelemetrySink {
     return {
       end: (endAttrs?: Attrs) => {
         // Merge start attrs + end attrs so span-end carries the full picture.
-        const merged: Attrs | undefined =
-          attrs || endAttrs ? { ...attrs, ...endAttrs } : undefined;
+        const merged: Attrs | undefined = attrs || endAttrs ? { ...attrs, ...endAttrs } : undefined;
         this.emit({ type: "span-end", spanId, name, attrs: merged, at: this.now() });
       },
     };

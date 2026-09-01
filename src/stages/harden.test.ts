@@ -284,7 +284,7 @@ describe("runHardening", () => {
       assert.ok(enrichUserMsg, "enrich call should have a user message");
       assert.ok(
         enrichUserMsg.content.includes(SENTINEL),
-        `enrichment prompt should include the issue body sentinel; got: ${enrichUserMsg.content}`,
+        `enrichment prompt should include the issue body sentinel; got: ${enrichUserMsg.content}`
       );
     });
   });

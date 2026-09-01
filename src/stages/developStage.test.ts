@@ -6,7 +6,13 @@ import { describe, it, beforeEach } from "node:test";
 import { makeInMemoryDb } from "../db/index.js";
 import { DrizzleTicketStore } from "../store/sqlite.js";
 import { DevelopStage } from "./developStage.js";
-import type { Executor, ExecutorInput, ExecutorResult, StageContext, ModelGateway } from "../module/seams.js";
+import type {
+  Executor,
+  ExecutorInput,
+  ExecutorResult,
+  StageContext,
+  ModelGateway,
+} from "../module/seams.js";
 
 // ── Fakes ─────────────────────────────────────────────────────────────────────
 
@@ -53,7 +59,11 @@ async function seedReadyTicket(store: DrizzleTicketStore) {
     intent: "Support secure user authentication",
   });
   await store.addRequirement({ ticketId: ticket.id, code: "FR-001", text: "Support email login" });
-  await store.addRequirement({ ticketId: ticket.id, code: "FR-002", text: "Hash passwords with bcrypt" });
+  await store.addRequirement({
+    ticketId: ticket.id,
+    code: "FR-002",
+    text: "Hash passwords with bcrypt",
+  });
   await store.addAcceptanceCriterion({
     ticketId: ticket.id,
     text: "User can log in with valid credentials",
@@ -64,11 +74,7 @@ async function seedReadyTicket(store: DrizzleTicketStore) {
   return ticket;
 }
 
-function makeCtx(
-  store: DrizzleTicketStore,
-  ticketId: number,
-  executor?: Executor,
-): StageContext {
+function makeCtx(store: DrizzleTicketStore, ticketId: number, executor?: Executor): StageContext {
   return {
     ticketId,
     store,
@@ -125,11 +131,11 @@ describe("DevelopStage", () => {
     assert.ok(executor.lastInput, "executor must have been called");
     assert.ok(
       executor.lastInput.spec.includes("Implement login flow"),
-      "spec must contain ticket title",
+      "spec must contain ticket title"
     );
     assert.ok(
       executor.lastInput.spec.includes("Support email login"),
-      "spec must contain requirement text",
+      "spec must contain requirement text"
     );
   });
 
@@ -144,7 +150,10 @@ describe("DevelopStage", () => {
     const result = await stage.run(makeCtx(store, ticket.id, executor));
 
     assert.equal(result.status, "blocked");
-    assert.ok(result.reason?.includes("no changes"), `reason should mention no changes, got: ${result.reason}`);
+    assert.ok(
+      result.reason?.includes("no changes"),
+      `reason should mention no changes, got: ${result.reason}`
+    );
 
     const updated = await store.getTicket(ticket.id);
     assert.equal(updated?.state, "ready");
@@ -162,7 +171,7 @@ describe("DevelopStage", () => {
     assert.equal(result.status, "blocked");
     assert.ok(
       result.reason?.includes("state=draft"),
-      `reason must mention state=draft, got: ${result.reason}`,
+      `reason must mention state=draft, got: ${result.reason}`
     );
   });
 
@@ -174,7 +183,7 @@ describe("DevelopStage", () => {
     assert.equal(result.status, "failed");
     assert.ok(
       result.reason?.includes("no executor"),
-      `reason must mention no executor, got: ${result.reason}`,
+      `reason must mention no executor, got: ${result.reason}`
     );
   });
 });

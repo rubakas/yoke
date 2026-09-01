@@ -19,7 +19,13 @@ import { intake, runHardening } from "./stages/harden.js";
 import { defaultProcessRunner } from "./stages/proc.js";
 import { runPipeline } from "./stages/runner.js";
 import { DrizzleTicketStore } from "./store/sqlite.js";
-import type { TrackerProvider, ModelGateway, Executor, Stage, StageContext } from "./module/seams.js";
+import type {
+  TrackerProvider,
+  ModelGateway,
+  Executor,
+  Stage,
+  StageContext,
+} from "./module/seams.js";
 
 function usage(): never {
   console.error(
@@ -124,7 +130,11 @@ async function main(): Promise<void> {
   const checks = { critic: new CriticCheck(), security: new SecurityCheck() };
   const hardenDeps = { tracker, model, store, checks, io, exportSpec, outDir };
 
-  async function resolveInput(): Promise<{ issueNumber?: number; freeText?: string; ghIssue?: Awaited<ReturnType<typeof tracker.ingest>> }> {
+  async function resolveInput(): Promise<{
+    issueNumber?: number;
+    freeText?: string;
+    ghIssue?: Awaited<ReturnType<typeof tracker.ingest>>;
+  }> {
     if (arg === "-") return { freeText: "" };
     const issueNumber = parseInt(arg, 10);
     if (isNaN(issueNumber) || issueNumber <= 0) {

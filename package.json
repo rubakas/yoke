@@ -15,6 +15,7 @@
     "db:migrate": "drizzle-kit migrate",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "check": "pnpm lint && pnpm typecheck && pnpm format:check && pnpm test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

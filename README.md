@@ -12,6 +12,7 @@ and whole-flow monitoring in one place.
 MVP in progress: Stage 1 (spec hardening) implemented end-to-end. Stages 2–4 (development, testing, audit) planned.
 
 **Key facts:**
+
 - Module system: 7 typed seams (TrackerProvider, ModelGateway, Executor, Stage, Check, TicketStore, TelemetrySink) + Registry + config Manifest.
 - Stage 1 end-to-end: `pnpm dev harden <issue-ref | ->` outputs a git-backed Spec Kit spec.md.
 - SQLite ticket-store is the pipeline source of truth (better-sqlite3 + Drizzle).
@@ -30,6 +31,7 @@ MVP in progress: Stage 1 (spec hardening) implemented end-to-end. Stages 2–4 (
 ### Architecture & Design Record
 
 **Architecture Decisions (ADRs):**
+
 - [0001. Base runtime: Pi](docs/decisions/0001-base-runtime-pi.md)
 - [0002. Single kernel per node](docs/decisions/0002-single-kernel-per-node.md)
 - [0003. Spec = git-backed SDD artifact](docs/decisions/0003-spec-is-git-backed-sdd.md)
@@ -89,6 +91,7 @@ curl -H "Authorization: Bearer secret" $YOKE_SERVER_URL/runs  # raw API
 ```
 
 **Quality gates** (run before commit):
+
 ```sh
 pnpm lint          # ESLint + typescript-eslint (type-checked)
 pnpm format:check  # Prettier

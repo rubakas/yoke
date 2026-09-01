@@ -54,12 +54,12 @@ When tests fail, Stage-3 drives the Executor to attempt a fix, up to `maxFixIter
 
 ## Requirements
 
-| ID     | Requirement                                                                                                      |
-| ------ | ---------------------------------------------------------------------------------------------------------------- |
-| FR-001 | System MUST run the configured test command (`testCommand` from config, default `["pnpm","test"]`).              |
-| FR-002 | System MUST record a `test` provenance row per attempt with `model="pass"` or `model="fail"`.                    |
+| ID     | Requirement                                                                                                                  |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| FR-001 | System MUST run the configured test command (`testCommand` from config, default `["pnpm","test"]`).                          |
+| FR-002 | System MUST record a `test` provenance row per attempt with `model="pass"` or `model="fail"`.                                |
 | FR-003 | System MUST run a bounded fix loop on failure, driving the Executor; maximum iterations = `maxFixIters` (config, default 2). |
-| FR-004 | System MUST gate: advance to `tested` on green, or return `blocked` with escalation reason on exhaustion.        |
+| FR-004 | System MUST gate: advance to `tested` on green, or return `blocked` with escalation reason on exhaustion.                    |
 
 ---
 

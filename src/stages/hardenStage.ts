@@ -18,7 +18,7 @@ export class HardenStage implements Stage {
         exportSpec: ctx.exportSpec!,
         outDir: ctx.outDir,
       },
-      { ticketId: ctx.ticketId },
+      { ticketId: ctx.ticketId }
     );
     return {
       status: result.state === "ready" ? "passed" : "blocked",

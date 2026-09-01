@@ -39,13 +39,13 @@ Blocking findings trigger a bounded fix loop via the Executor; on exhaustion the
 
 ## Requirements
 
-| ID     | Requirement                                                                                                                        |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| FR-001 | System MUST define a `Check` module interface: `run(ticketId, ctx) → Finding[]`, each finding tagged with severity and blocking.   |
-| FR-002 | System MUST ship a reviewer `Check` and a security `Check` as built-in implementations.                                            |
+| ID     | Requirement                                                                                                                                                                  |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-001 | System MUST define a `Check` module interface: `run(ticketId, ctx) → Finding[]`, each finding tagged with severity and blocking.                                             |
+| FR-002 | System MUST ship a reviewer `Check` and a security `Check` as built-in implementations.                                                                                      |
 | FR-003 | System MUST run all registered `Check` modules in parallel and write findings to distinct rows: `securityFindings` for checks named "security", `weaknesses` for all others. |
-| FR-004 | System MUST run a bounded bugfix loop (via Executor, spec 004) for blocking findings; max iterations from `maxFixIters` config (default 2). |
-| FR-005 | System MUST enforce a final stage gate: no unresolved blocking findings before state advances to `done`; unresolved findings leave state at `tested` and return `blocked`. |
+| FR-004 | System MUST run a bounded bugfix loop (via Executor, spec 004) for blocking findings; max iterations from `maxFixIters` config (default 2).                                  |
+| FR-005 | System MUST enforce a final stage gate: no unresolved blocking findings before state advances to `done`; unresolved findings leave state at `tested` and return `blocked`.   |
 
 ---
 

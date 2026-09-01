@@ -122,6 +122,9 @@ describe("RunControlRegistry", () => {
     reg.get(20);
     reg.get(30);
     const ids = reg.list();
-    assert.deepStrictEqual(ids.sort((a, b) => a - b), [10, 20, 30]);
+    assert.deepStrictEqual(
+      ids.sort((a, b) => a - b),
+      [10, 20, 30]
+    );
   });
 });

@@ -17,7 +17,14 @@ import { DrizzleTicketStore } from "../store/sqlite.js";
 import { TelemetryBus } from "./bus.js";
 import { RunControlRegistry } from "./control.js";
 import type { Config } from "../config.js";
-import type { Executor, ModelGateway, Stage, StageContext, TicketStore, TrackerProvider } from "../module/seams.js";
+import type {
+  Executor,
+  ModelGateway,
+  Stage,
+  StageContext,
+  TicketStore,
+  TrackerProvider,
+} from "../module/seams.js";
 
 export interface YokeNode {
   store: TicketStore;
@@ -56,9 +63,7 @@ export function createNode(config: Config): YokeNode {
   const hardenDeps = { tracker, model, store, checks, io, exportSpec, outDir };
 
   async function startRun(input: { issueNumber?: number; freeText?: string }): Promise<number> {
-    const ghIssue = input.issueNumber
-      ? await tracker.ingest(String(input.issueNumber))
-      : undefined;
+    const ghIssue = input.issueNumber ? await tracker.ingest(String(input.issueNumber)) : undefined;
 
     const ticketId = await intake(hardenDeps, { ...input, ghIssue });
     const control = controls.get(ticketId);

@@ -24,7 +24,7 @@ class ScriptedCheck implements Check {
   private idx = 0;
   constructor(
     readonly name: string,
-    private readonly scripts: Finding[][],
+    private readonly scripts: Finding[][]
   ) {}
 
   run(_ticketId: number, _ctx: CheckContext): Promise<Finding[]> {
@@ -82,7 +82,7 @@ async function seedTestedTicket(store: DrizzleTicketStore) {
 function makeCtx(
   store: DrizzleTicketStore,
   ticketId: number,
-  overrides: Partial<StageContext> = {},
+  overrides: Partial<StageContext> = {}
 ): StageContext {
   return {
     ticketId,
@@ -120,7 +120,7 @@ describe("AuditStage", () => {
       makeCtx(store, ticket.id, {
         checks: { critic: criticCheck, security: securityCheck },
         executor,
-      }),
+      })
     );
 
     assert.equal(result.status, "passed");
@@ -157,7 +157,7 @@ describe("AuditStage", () => {
       makeCtx(store, ticket.id, {
         checks: { security: securityCheck, critic: criticCheck },
         executor: new MustNotCallExecutor(),
-      }),
+      })
     );
 
     const weaknesses = await store.listWeaknesses(ticket.id);
@@ -185,7 +185,7 @@ describe("AuditStage", () => {
         checks: { critic: check },
         executor,
         maxFixIters: 2,
-      }),
+      })
     );
 
     assert.equal(result.status, "passed");
@@ -196,7 +196,7 @@ describe("AuditStage", () => {
     assert.equal(executor.calls.length, 1, "executor must be called exactly once");
     assert.ok(
       executor.calls[0].spec.includes("Unsafe deserialization"),
-      "executor spec must contain the blocking finding text",
+      "executor spec must contain the blocking finding text"
     );
   });
 
@@ -215,14 +215,14 @@ describe("AuditStage", () => {
         checks: { critic: check },
         executor,
         maxFixIters: 2,
-      }),
+      })
     );
 
     assert.equal(result.status, "blocked");
     const reasonLower = result.reason?.toLowerCase() ?? "";
     assert.ok(
       reasonLower.includes("escalate") || reasonLower.includes("blocking"),
-      `reason must mention escalate/blocking, got: ${result.reason}`,
+      `reason must mention escalate/blocking, got: ${result.reason}`
     );
 
     const updated = await store.getTicket(ticket.id);
@@ -246,14 +246,12 @@ describe("AuditStage", () => {
     };
 
     const stage = new AuditStage();
-    const result = await stage.run(
-      makeCtx(store, ticket.id, { checks: { critic: check } }),
-    );
+    const result = await stage.run(makeCtx(store, ticket.id, { checks: { critic: check } }));
 
     assert.equal(result.status, "blocked");
     assert.ok(
       result.reason?.includes("state=developed"),
-      `reason must mention state=developed, got: ${result.reason}`,
+      `reason must mention state=developed, got: ${result.reason}`
     );
     assert.equal(checkCalled, false, "checks must not run when ticket is not in tested state");
   });
@@ -267,7 +265,7 @@ describe("AuditStage", () => {
     assert.equal(result.status, "failed");
     assert.ok(
       result.reason?.includes("no checks"),
-      `reason must mention no checks, got: ${result.reason}`,
+      `reason must mention no checks, got: ${result.reason}`
     );
   });
 
@@ -280,7 +278,7 @@ describe("AuditStage", () => {
     assert.equal(result.status, "failed");
     assert.ok(
       result.reason?.includes("no checks"),
-      `reason must mention no checks, got: ${result.reason}`,
+      `reason must mention no checks, got: ${result.reason}`
     );
   });
 });

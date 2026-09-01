@@ -115,7 +115,12 @@ describe("HTTP+SSE server", () => {
       try {
         const res = await fetch(`http://127.0.0.1:${port}/runs`);
         assert.strictEqual(res.status, 200);
-        const body = (await res.json()) as { id: number; title: string; state: string; stageRuns: unknown[] }[];
+        const body = (await res.json()) as {
+          id: number;
+          title: string;
+          state: string;
+          stageRuns: unknown[];
+        }[];
         assert.strictEqual(body.length, 2);
         assert.strictEqual(body[0].id, t1.id);
         assert.strictEqual(body[0].title, "Ticket Alpha");

@@ -83,7 +83,7 @@ async function seedDevelopedTicket(store: DrizzleTicketStore) {
 function makeCtx(
   store: DrizzleTicketStore,
   ticketId: number,
-  overrides: Partial<StageContext> = {},
+  overrides: Partial<StageContext> = {}
 ): StageContext {
   return {
     ticketId,
@@ -114,7 +114,7 @@ describe("TestStage", () => {
       makeCtx(store, ticket.id, {
         runProcess: scriptedProcessRunner([{ ok: true, output: "All tests pass" }]),
         executor,
-      }),
+      })
     );
 
     assert.equal(result.status, "passed");
@@ -143,7 +143,7 @@ describe("TestStage", () => {
         ]),
         executor,
         maxFixIters: 2,
-      }),
+      })
     );
 
     assert.equal(result.status, "passed");
@@ -154,7 +154,7 @@ describe("TestStage", () => {
     assert.equal(executor.calls.length, 1, "executor must be called exactly once");
     assert.ok(
       executor.calls[0].spec.includes("Test failed: expected 200"),
-      "executor spec must contain failing output",
+      "executor spec must contain failing output"
     );
   });
 
@@ -168,14 +168,14 @@ describe("TestStage", () => {
         runProcess: scriptedProcessRunner([{ ok: false, output: "still failing" }]),
         executor,
         maxFixIters: 2,
-      }),
+      })
     );
 
     assert.equal(result.status, "blocked");
     const reasonLower = result.reason?.toLowerCase() ?? "";
     assert.ok(
       reasonLower.includes("escalate") || reasonLower.includes("failing"),
-      `reason must mention escalate/failing, got: ${result.reason}`,
+      `reason must mention escalate/failing, got: ${result.reason}`
     );
 
     const updated = await store.getTicket(ticket.id);
@@ -201,7 +201,7 @@ describe("TestStage", () => {
     assert.equal(result.status, "blocked");
     assert.ok(
       result.reason?.includes("state=ready"),
-      `reason must mention state=ready, got: ${result.reason}`,
+      `reason must mention state=ready, got: ${result.reason}`
     );
     assert.equal(runProcessCalled, false, "runProcess must not be called");
   });
@@ -214,7 +214,7 @@ describe("TestStage", () => {
     assert.equal(result.status, "failed");
     assert.ok(
       result.reason?.includes("no process runner"),
-      `reason must mention no process runner, got: ${result.reason}`,
+      `reason must mention no process runner, got: ${result.reason}`
     );
   });
 });
