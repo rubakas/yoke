@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+*.sqlite
+*.sqlite-journal
+.pi/
+
+# One-time research doc — kept locally, not published (decisions distilled into docs/decisions/)
+docs/yoke-harness-research-and-design.md
