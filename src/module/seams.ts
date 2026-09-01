@@ -89,6 +89,13 @@ export interface Executor {
 
 // ── Stage ─────────────────────────────────────────────────────────────────────
 
+export interface ProcessResult {
+  ok: boolean;
+  output: string;
+}
+
+export type ProcessRunner = (cmd: string, args: string[], cwd: string) => Promise<ProcessResult>;
+
 export interface StageContext {
   ticketId: number;
   store: TicketStore;
@@ -101,6 +108,9 @@ export interface StageContext {
   executor?: Executor;
   checks?: Record<string, Check>;
   exportSpec?: (ticket: FullTicket, outDir: string) => Promise<string>;
+  runProcess?: ProcessRunner;
+  testCommand?: string[];
+  maxFixIters?: number;
 }
 
 export interface StageResult {

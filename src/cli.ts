@@ -12,6 +12,7 @@ import { Registry } from "./module/registry.js";
 import { initObservability } from "./observability/otel.js";
 import { exportSpec } from "./spec/export.js";
 import { intake, runHardening } from "./stages/harden.js";
+import { defaultProcessRunner } from "./stages/proc.js";
 import { runPipeline } from "./stages/runner.js";
 import { DrizzleTicketStore } from "./store/sqlite.js";
 import type { TrackerProvider, ModelGateway, Executor, Stage, StageContext } from "./module/seams.js";
@@ -100,6 +101,9 @@ async function main(): Promise<void> {
         checks,
         exportSpec,
         executor,
+        runProcess: defaultProcessRunner,
+        testCommand: config.testCommand,
+        maxFixIters: config.maxFixIters,
       });
 
       const result = await runPipeline({ stages, store, buildContext }, { ticketId });
