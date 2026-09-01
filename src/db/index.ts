@@ -78,10 +78,11 @@ CREATE TABLE IF NOT EXISTS stage_runs (
 );
 `;
 
-/** Open (or create) a file-backed SQLite database at the given path. */
+/** Open (or create) a file-backed SQLite database at the given path. Applies schema DDL idempotently. */
 export function makeDb(path: string): DbInstance {
   const sqlite = new Database(path);
   sqlite.pragma("foreign_keys = ON");
+  sqlite.exec(SCHEMA_DDL);
   return drizzle(sqlite, { schema });
 }
 
