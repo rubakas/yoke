@@ -14,6 +14,7 @@ function makeFullTicket(overrides: Partial<FullTicket> = {}): FullTicket {
     id: 1,
     slug: "my-feature",
     title: "My Feature",
+    body: null,
     intent: "Build something useful",
     state: "hardening",
     sourceRef: null,

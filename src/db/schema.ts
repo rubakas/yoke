@@ -8,6 +8,7 @@ export const tickets = sqliteTable("tickets", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull(),
   title: text("title").notNull(),
+  body: text("body"),
   intent: text("intent"),
   // draft | hardening | ready | blocked
   state: text("state", {

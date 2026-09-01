@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   slug TEXT NOT NULL,
   title TEXT NOT NULL,
+  body TEXT,
   intent TEXT,
   state TEXT NOT NULL DEFAULT 'draft',
   source_ref TEXT,

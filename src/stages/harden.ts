@@ -80,6 +80,7 @@ async function draftStep(deps: HardenDeps, input: HardenInput): Promise<number> 
   const ticket = await deps.store.createTicket({
     slug,
     title: rawTitle,
+    body: input.ghIssue?.body ?? input.freeText ?? null,
     intent,
     sourceRef: input.issueNumber ? `gh#${input.issueNumber}` : undefined,
   });
@@ -239,7 +240,7 @@ export async function runHardening(
 
   const ticket = await deps.store.getFullTicket(ticketId);
   const description = ticket
-    ? `${ticket.title}${ticket.intent ? `\n\n${ticket.intent}` : ""}`
+    ? [ticket.title, ticket.body, ticket.intent].filter(Boolean).join("\n\n")
     : "";
 
   await enrichStep(deps, ticketId, description);

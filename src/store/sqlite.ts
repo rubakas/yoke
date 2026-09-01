@@ -30,6 +30,7 @@ export class DrizzleTicketStore implements TicketStore {
       .values({
         slug: data.slug,
         title: data.title,
+        body: data.body ?? null,
         intent: data.intent,
         sourceRef: data.sourceRef,
       })

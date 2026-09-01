@@ -159,6 +159,7 @@ type TicketState = TicketRow["state"];
 export interface NewTicket {
   slug: string;
   title: string;
+  body?: string | null;
   intent?: string;
   sourceRef?: string;
 }

@@ -33,6 +33,18 @@ class ScriptedGateway implements ModelGateway {
   }
 }
 
+class CapturingGateway implements ModelGateway {
+  readonly calls: ChatMessage[][] = [];
+  private readonly delegate: ModelGateway;
+  constructor(responses: string[]) {
+    this.delegate = new ScriptedGateway(responses);
+  }
+  async chat(messages: ChatMessage[], opts?: ChatOptions): Promise<ChatResponse> {
+    this.calls.push(messages);
+    return this.delegate.chat(messages, opts);
+  }
+}
+
 // ── Scripted model responses ──────────────────────────────────────────────────
 
 const ENRICH_RESPONSE = JSON.stringify({
@@ -236,6 +248,44 @@ describe("runHardening", () => {
       const result = await runHardening(deps, { ticketId });
       const ticket = await store.getTicket(result.ticketId);
       assert.strictEqual(ticket?.state, "blocked");
+    });
+  });
+
+  describe("regression — issue body preserved through intake/runHardening split", () => {
+    it("enrichment prompt contains the ghIssue body sentinel", async () => {
+      const store = makeStore();
+      const SENTINEL = "UNIQUE_BODY_SENTINEL_XYZ";
+      const model = new CapturingGateway([ENRICH_RESPONSE, CRITIC_RESPONSE, SECURITY_RESPONSE]);
+      const exportSpyCalls: FullTicket[] = [];
+      const deps: HardenDeps = {
+        tracker: new NoopTracker(),
+        model,
+        store,
+        checks: { critic: new CriticCheck(), security: new SecurityCheck() },
+        io: {
+          ask: async (_prompt: string) => "stated intent",
+          confirm: async (_prompt: string) => true,
+        },
+        exportSpec: async (ticket: FullTicket, _outDir: string) => {
+          exportSpyCalls.push(ticket);
+          return join(outDir, `${ticket.id}/spec.md`);
+        },
+        outDir,
+      };
+      const ticketId = await intake(deps, {
+        issueNumber: 99,
+        ghIssue: { title: "Some Issue", body: SENTINEL, labels: [], url: "" },
+      });
+      await runHardening(deps, { ticketId });
+
+      // The first model call is the enrich step — its user message must contain the body sentinel.
+      assert.ok(model.calls.length > 0, "model should have been called");
+      const enrichUserMsg = model.calls[0].find((m) => m.role === "user");
+      assert.ok(enrichUserMsg, "enrich call should have a user message");
+      assert.ok(
+        enrichUserMsg.content.includes(SENTINEL),
+        `enrichment prompt should include the issue body sentinel; got: ${enrichUserMsg.content}`,
+      );
     });
   });
 });
