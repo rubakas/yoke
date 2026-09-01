@@ -25,3 +25,27 @@ The full landscape research, architecture, trade-offs, and build sequence live i
   install scripts, pinned dependencies, sandbox + network-egress allowlist.
 
 See the design doc for the full picture.
+
+## Development
+
+**Prerequisites:** Node ≥ 22, pnpm, Docker (Compose v2), Pi CLI, `claude` CLI, `gh` (authenticated).
+
+> Exact dependency versions pin on first `pnpm install` via `.npmrc save-exact`. The resulting `pnpm-lock.yaml` is committed and must be kept in sync.
+
+```sh
+# 1. Configure environment
+cp .env.example .env          # fill in LITELLM_MASTER_KEY, LITELLM_VIRTUAL_KEY, GH_TOKEN
+
+# 2. Start the stack (LiteLLM proxy + Postgres + Phoenix)
+docker compose up -d postgres litellm phoenix
+
+# 3. Install dependencies (pins exact versions, no lifecycle scripts)
+pnpm install
+
+# 4. Generate and apply DB migrations
+pnpm db:generate && pnpm db:migrate
+
+# 5. Run the CLI
+pnpm dev harden -             # interactive free-text mode
+pnpm dev harden 42            # seed from GitHub issue #42
+```

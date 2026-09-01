@@ -1,0 +1,30 @@
+{
+  "name": "yoke",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/cli.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.2",
+    "better-sqlite3": "^11.10.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "drizzle-kit": "^0.31.1",
+    "tsx": "^4.19.4",
+    "@types/node": "^22.15.32",
+    "@types/better-sqlite3": "^7.6.13"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3"]
+  }
+}

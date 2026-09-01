@@ -1,0 +1,13 @@
+# LiteLLM proxy config — Layer-0 key isolation (ADR-0004)
+# Real provider keys are set as env vars in the LiteLLM container only.
+# Yoke holds only a revocable LITELLM_VIRTUAL_KEY, never OPENAI_API_KEY.
+
+model_list:
+  - model_name: default
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
