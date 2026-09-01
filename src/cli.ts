@@ -12,6 +12,8 @@ import { bootstrap } from "./manifest.js";
 import { makeDb } from "./db/index.js";
 import { DrizzleTicketStore } from "./store/sqlite.js";
 import type { TrackerProvider, ModelGateway } from "./module/seams.js";
+import { CriticCheck } from "./checks/critic.js";
+import { SecurityCheck } from "./checks/security.js";
 
 function usage(): void {
   console.error("Usage: yoke harden <issue-number | ->");
@@ -51,12 +53,13 @@ async function main(): Promise<void> {
   };
 
   const outDir = join(process.cwd(), "specs");
+  const checks = { critic: new CriticCheck(), security: new SecurityCheck() };
 
   try {
     if (arg === "-") {
       // Interactive free-text mode (US1).
       const result = await runHardening(
-        { tracker, model, store, io, exportSpec, outDir },
+        { tracker, model, store, checks, io, exportSpec, outDir },
         { freeText: "" }
       );
       console.log(JSON.stringify(result, null, 2));
@@ -69,7 +72,7 @@ async function main(): Promise<void> {
       // US4: seed from GitHub issue via the tracker seam.
       const ghIssue = await tracker.ingest(String(issueNumber));
       const result = await runHardening(
-        { tracker, model, store, io, exportSpec, outDir },
+        { tracker, model, store, checks, io, exportSpec, outDir },
         { issueNumber, ghIssue }
       );
       console.log(JSON.stringify(result, null, 2));

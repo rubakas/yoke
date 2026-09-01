@@ -111,19 +111,27 @@ export interface Stage {
 // ── Check ─────────────────────────────────────────────────────────────────────
 
 export interface Finding {
-  code: string;
+  /** Optional code (e.g. "WEAK-001"); stage assigns a prefix-code if absent. */
+  code?: string;
   text: string;
   severity: "low" | "medium" | "high" | "critical";
   blocking: boolean;
 }
 
+/** Dependencies a Check needs to do its work (injected by the stage). */
+export interface CheckContext {
+  model: ModelGateway;
+  store: TicketStore;
+}
+
 /**
  * A quality or security check that runs against a ticket.
- * Implementations: SecurityCheck, DependencyCheck, …
+ * Returns findings; the stage is responsible for persisting them.
+ * Implementations: CriticCheck, SecurityCheck, DependencyCheck, …
  */
 export interface Check {
   readonly name: string;
-  run(ticketId: number): Promise<Finding[]>;
+  run(ticketId: number, ctx: CheckContext): Promise<Finding[]>;
 }
 
 // ── TicketStore ───────────────────────────────────────────────────────────────

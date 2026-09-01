@@ -7,6 +7,7 @@ import { trackerModules } from "./tracker/index.js";
 import { modelModules } from "./model/index.js";
 import { storeModules } from "./store/index.js";
 import { executorModules } from "./executor/index.js";
+import { checkModules } from "./checks/index.js";
 
 /** Production manifest — active module per seam for a real Yoke run. */
 export const defaultManifest: Manifest = {
@@ -14,6 +15,7 @@ export const defaultManifest: Manifest = {
   model: { active: "litellm", enabled: ["litellm", "echo"] },
   ticketStore: { active: "sqlite", enabled: ["sqlite"] },
   executor: { active: "claude-code", enabled: ["claude-code", "noop"] },
+  check: { active: "critic", enabled: ["critic", "security"] },
 };
 
 /**
@@ -27,6 +29,7 @@ export function bootstrap(registry: Registry, overrides?: Manifest): void {
     ...modelModules,
     ...storeModules,
     ...executorModules,
+    ...checkModules,
   ];
   const manifest: Manifest = { ...defaultManifest, ...overrides };
   registry.loadManifest(manifest, allModules);

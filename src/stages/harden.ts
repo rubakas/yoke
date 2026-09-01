@@ -7,6 +7,7 @@ import type {
   ModelGateway,
   TicketStore,
   FullTicket,
+  Check,
 } from "../module/seams.js";
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -22,6 +23,8 @@ export interface HardenDeps {
   tracker: TrackerProvider;
   model: ModelGateway;
   store: TicketStore;
+  /** Pluggable Check instances — critic and security run in the hardening pipeline. */
+  checks: { critic: Check; security: Check };
   io: {
     ask: (prompt: string) => Promise<string>;
     confirm: (prompt: string) => Promise<boolean>;
@@ -121,81 +124,38 @@ async function enrichStep(deps: HardenDeps, ticketId: number, description: strin
 
 // ── Step: critic ──────────────────────────────────────────────────────────────
 
-interface CriticData {
-  weaknesses?: Array<{ code: string; text: string; severity: string; blocking?: boolean }>;
-}
-
 async function criticStep(deps: HardenDeps, ticketId: number): Promise<void> {
-  const ticket = await deps.store.getFullTicket(ticketId);
-  if (!ticket) return;
-
-  const summary =
-    `Title: ${ticket.title}\n` +
-    `ACs: ${ticket.acceptanceCriteria.map((a) => a.text).join("; ")}`;
-
-  const response = await deps.model.chat([
-    {
-      role: "system",
-      content:
-        'You are an adversarial critic. Review this ticket for weaknesses — gaps, ambiguities, ' +
-        'missing edge cases. Respond with JSON only: ' +
-        '{"weaknesses":[{"code":"WEAK-001","text":"...","severity":"low|medium|high","blocking":false}]}',
-    },
-    {
-      role: "user",
-      content: summary,
-    },
-  ]);
-
-  const data = parseJson<CriticData>(response.content);
-
-  for (const w of data?.weaknesses ?? []) {
+  const findings = await deps.checks.critic.run(ticketId, {
+    model: deps.model,
+    store: deps.store,
+  });
+  for (let i = 0; i < findings.length; i++) {
+    const f = findings[i]!;
     await deps.store.addWeakness({
       ticketId,
-      code: w.code,
-      text: w.text,
-      severity: w.severity,
-      blocking: w.blocking ?? false,
+      code: f.code ?? `WEAK-${String(i + 1).padStart(3, "0")}`,
+      text: f.text,
+      severity: f.severity,
+      blocking: f.blocking,
     });
   }
 }
 
 // ── Step: security check ──────────────────────────────────────────────────────
 
-interface SecurityData {
-  findings?: Array<{ code: string; text: string; severity: string; blocking?: boolean }>;
-}
-
 async function securityStep(deps: HardenDeps, ticketId: number): Promise<void> {
-  const ticket = await deps.store.getFullTicket(ticketId);
-  if (!ticket) return;
-
-  const summary =
-    `Title: ${ticket.title}\n` +
-    `ACs: ${ticket.acceptanceCriteria.map((a) => a.text).join("; ")}`;
-
-  const response = await deps.model.chat([
-    {
-      role: "system",
-      content:
-        'You are a security analyst. Review this ticket for security risks. Respond with JSON only: ' +
-        '{"findings":[{"code":"SEC-001","text":"...","severity":"low|medium|high|critical","blocking":false}]}',
-    },
-    {
-      role: "user",
-      content: summary,
-    },
-  ]);
-
-  const data = parseJson<SecurityData>(response.content);
-
-  for (const sf of data?.findings ?? []) {
+  const findings = await deps.checks.security.run(ticketId, {
+    model: deps.model,
+    store: deps.store,
+  });
+  for (let i = 0; i < findings.length; i++) {
+    const f = findings[i]!;
     await deps.store.addSecurityFinding({
       ticketId,
-      code: sf.code,
-      text: sf.text,
-      severity: sf.severity,
-      blocking: sf.blocking ?? false,
+      code: f.code ?? `SEC-${String(i + 1).padStart(3, "0")}`,
+      text: f.text,
+      severity: f.severity,
+      blocking: f.blocking,
     });
   }
 }

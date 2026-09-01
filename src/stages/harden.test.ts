@@ -9,6 +9,8 @@ import { tmpdir } from "node:os";
 import { makeInMemoryDb } from "../db/index.js";
 import { DrizzleTicketStore } from "../store/sqlite.js";
 import { NoopTracker } from "../tracker/noop.js";
+import { CriticCheck } from "../checks/critic.js";
+import { SecurityCheck } from "../checks/security.js";
 import { runHardening } from "./harden.js";
 import type { ModelGateway, ChatMessage, ChatOptions, ChatResponse, FullTicket } from "../module/seams.js";
 import type { HardenDeps, HardenInput } from "./harden.js";
@@ -70,6 +72,7 @@ function makeHappyPathDeps(
     }),
     model: new ScriptedGateway([ENRICH_RESPONSE, CRITIC_RESPONSE, SECURITY_RESPONSE]),
     store,
+    checks: { critic: new CriticCheck(), security: new SecurityCheck() },
     io: {
       ask: async (_prompt: string) => "build a feature that does X",
       confirm: async (_prompt: string) => true,
@@ -175,6 +178,7 @@ describe("runHardening", () => {
         tracker: new NoopTracker(),
         model: new ScriptedGateway([ENRICH_EMPTY_RESPONSE, CRITIC_RESPONSE, SECURITY_RESPONSE]),
         store,
+        checks: { critic: new CriticCheck(), security: new SecurityCheck() },
         io: {
           ask: async (_prompt: string) => "a vague task",
           confirm: async (_prompt: string) => true,
