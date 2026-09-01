@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 // FR-001: entry point — `yoke harden <issue-number | ->`
 
+import { createInterface } from "node:readline";
+import { join } from "node:path";
 import { loadConfig } from "./config.js";
 import { initObservability } from "./observability/otel.js";
 import { runHardening } from "./stages/harden.js";
-import { GitHubTracker } from "./tracker/github.js";
-
-// TODO(FR-001): extend with a proper arg-parsing library (e.g. parseArgs from
-// node:util) and subcommands as the surface grows.
+import { exportSpec } from "./spec/export.js";
+import { Registry } from "./module/registry.js";
+import { bootstrap } from "./manifest.js";
+import { makeDb } from "./db/index.js";
+import { DrizzleTicketStore } from "./store/sqlite.js";
+import type { TrackerProvider, ModelGateway } from "./module/seams.js";
 
 function usage(): void {
   console.error("Usage: yoke harden <issue-number | ->");
@@ -22,22 +26,56 @@ async function main(): Promise<void> {
   const config = loadConfig();
   initObservability(config);
 
-  // TODO(FR-001, FR-009): wire db migrations check on startup.
+  // Build registry and resolve seams.
+  const registry = new Registry();
+  bootstrap(registry);
 
-  if (arg === "-") {
-    // Interactive free-text mode (US1).
-    // TODO(FR-001): prompt the user for a task description via stdin.
-    await runHardening({ freeText: "<TODO: read from stdin>" });
-  } else {
-    const issueNumber = parseInt(arg, 10);
-    if (isNaN(issueNumber) || issueNumber <= 0) {
-      console.error(`Invalid issue number: ${arg}`);
-      process.exit(1);
+  const tracker = registry.get<TrackerProvider>("tracker");
+  const model = registry.get<ModelGateway>("model");
+  const store = new DrizzleTicketStore(makeDb(config.dbPath));
+
+  // Build a real terminal IO port.
+  const rl = createInterface({ input: process.stdin });
+
+  const io = {
+    ask: (prompt: string) =>
+      new Promise<string>((resolve) => {
+        process.stdout.write(`${prompt}\n> `);
+        rl.once("line", resolve);
+      }),
+    confirm: (prompt: string) =>
+      new Promise<boolean>((resolve) => {
+        process.stdout.write(`${prompt} [y/N] `);
+        rl.once("line", (answer) => resolve(answer.trim().toLowerCase() === "y"));
+      }),
+  };
+
+  const outDir = join(process.cwd(), "specs");
+
+  try {
+    if (arg === "-") {
+      // Interactive free-text mode (US1).
+      const result = await runHardening(
+        { tracker, model, store, io, exportSpec, outDir },
+        { freeText: "" }
+      );
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      const issueNumber = parseInt(arg, 10);
+      if (isNaN(issueNumber) || issueNumber <= 0) {
+        console.error(`Invalid issue number: ${arg}`);
+        process.exit(1);
+      }
+      // US4: seed from GitHub issue via the tracker seam.
+      const ghIssue = await tracker.ingest(String(issueNumber));
+      const result = await runHardening(
+        { tracker, model, store, io, exportSpec, outDir },
+        { issueNumber, ghIssue }
+      );
+      console.log(JSON.stringify(result, null, 2));
     }
-    // US4: seed from GitHub issue via the tracker seam.
-    const tracker = new GitHubTracker();
-    const ghIssue = await tracker.ingest(String(issueNumber));
-    await runHardening({ issueNumber, ghIssue });
+  } finally {
+    rl.close();
   }
 }
 
