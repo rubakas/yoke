@@ -36,7 +36,9 @@ class FakeFetch {
   }
 
   /** The injectable fetch function. */
-  readonly fetch = async (url: string, init?: RequestInit): Promise<Response> => {
+  readonly fetch: typeof fetch = async (input: URL | RequestInfo, init?: RequestInit): Promise<Response> => {
+    const url = input instanceof Request ? input.url : String(input);
+
     const headers: Record<string, string> = {};
     if (init?.headers) {
       const h = init.headers as Record<string, string>;
