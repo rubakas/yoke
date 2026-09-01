@@ -20,7 +20,7 @@ export interface RunCliResult {
   durationMs: number;
 }
 
-const SCRUBBED_KEYS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"];
+const SCRUBBED_KEYS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LITELLM_VIRTUAL_KEY"];
 
 export function runClaudeCli(
   prompt: string,
@@ -35,9 +35,9 @@ export function runClaudeCli(
   const env: NodeJS.ProcessEnv = { ...rawEnv };
   for (const key of SCRUBBED_KEYS) delete env[key];
 
+  // Prompt is written to child stdin; passing it as argv would expose it in process listings.
   const args = [
     "-p",
-    prompt,
     "--output-format",
     "text",
     ...(model ? ["--model", model] : []),
@@ -59,21 +59,20 @@ export function runClaudeCli(
       stderr += chunk.toString();
     });
 
-    // No interactive input — close stdin immediately
+    // Deliver prompt via stdin so it never appears in process argv listings.
+    child.stdin.write(prompt);
     child.stdin.end();
 
     const onAbort = () => {
       child.kill("SIGTERM");
     };
 
-    if (signal) {
-      if (signal.aborted) {
-        child.kill("SIGTERM");
-        reject(new DOMException("Claude CLI aborted before start", "AbortError"));
-        return;
-      }
-      signal.addEventListener("abort", onAbort, { once: true });
-    }
+    // Attach error and close handlers unconditionally BEFORE any early return so the child
+    // process always has handlers (prevents ERR_UNHANDLED_ERROR if claude is missing from PATH).
+    child.on("error", (err) => {
+      if (signal) signal.removeEventListener("abort", onAbort);
+      reject(err);
+    });
 
     child.on("close", (code) => {
       if (signal) signal.removeEventListener("abort", onAbort);
@@ -95,10 +94,14 @@ export function runClaudeCli(
       resolve({ stdout, stderr, exitCode, durationMs });
     });
 
-    child.on("error", (err) => {
-      if (signal) signal.removeEventListener("abort", onAbort);
-      reject(err);
-    });
+    if (signal) {
+      if (signal.aborted) {
+        child.kill("SIGTERM");
+        reject(new DOMException("Claude CLI aborted before start", "AbortError"));
+        return;
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
   });
 }
 

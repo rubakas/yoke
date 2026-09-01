@@ -4,73 +4,24 @@ import { PassThrough } from "node:stream";
 import { describe, it } from "node:test";
 import { ModelRegistry } from "./registry.js";
 import { makeRunClaudeCliFunction, runClaudeCli } from "./runClaudeCli.js";
+import { makeFakeChild, makeFakeSpawn } from "./testing/fakeSpawn.js";
 import type { SpawnFn } from "./runClaudeCli.js";
-
-// ── Fake child process ────────────────────────────────────────────────────────
-
-interface FakeChildOptions {
-  stdoutChunks?: string[];
-  stderrChunks?: string[];
-  exitCode?: number;
-}
-
-function makeFakeChild(opts: FakeChildOptions = {}) {
-  const { stdoutChunks = [], stderrChunks = [], exitCode = 0 } = opts;
-
-  const emitter = new EventEmitter();
-  const stdout = new PassThrough();
-  const stderr = new PassThrough();
-  const stdin = new PassThrough();
-
-  const killCalls: string[] = [];
-
-  const child = Object.assign(emitter, {
-    stdout,
-    stderr,
-    stdin,
-    kill(signal?: string) {
-      killCalls.push(signal ?? "SIGTERM");
-    },
-  });
-
-  // Emit events asynchronously so listeners are attached first
-  setImmediate(() => {
-    for (const chunk of stdoutChunks) stdout.push(chunk);
-    stdout.push(null);
-    for (const chunk of stderrChunks) stderr.push(chunk);
-    stderr.push(null);
-
-    emitter.emit("close", exitCode);
-  });
-
-  return { child, killCalls };
-}
-
-function makeFakeSpawn(opts: FakeChildOptions = {}): { spawn: SpawnFn; capturedArgs: string[][] } {
-  const capturedArgs: string[][] = [];
-  const { child } = makeFakeChild(opts);
-  const spawn = ((_cmd: string, args: string[]) => {
-    capturedArgs.push(args);
-    return child;
-  }) as unknown as SpawnFn;
-  return { spawn, capturedArgs };
-}
 
 // ── Tests: runClaudeCli ───────────────────────────────────────────────────────
 
 describe("runClaudeCli", () => {
-  it("passes correct args to spawn", async () => {
+  it("passes correct args to spawn (prompt via stdin, not argv)", async () => {
     const { spawn, capturedArgs } = makeFakeSpawn({ stdoutChunks: ["PONG"] });
     await runClaudeCli("say PONG", { model: "opus", extraArgs: ["--foo"] }, { spawn });
     assert.deepEqual(capturedArgs[0], [
       "-p",
-      "say PONG",
       "--output-format",
       "text",
       "--model",
       "opus",
       "--foo",
     ]);
+    assert.ok(!capturedArgs[0].includes("say PONG"), "prompt must not appear in argv");
   });
 
   it("omits --model when not specified", async () => {
@@ -103,7 +54,7 @@ describe("runClaudeCli", () => {
 
     assert.equal(capturedEnv?.OPENAI_API_KEY, undefined);
     assert.equal(capturedEnv?.ANTHROPIC_API_KEY, undefined);
-    assert.equal(capturedEnv?.LITELLM_VIRTUAL_KEY, "vk-123");
+    assert.equal(capturedEnv?.LITELLM_VIRTUAL_KEY, undefined);
     assert.equal(capturedEnv?.HOME, "/home/test");
   });
 
@@ -159,6 +110,40 @@ describe("runClaudeCli", () => {
       name: "AbortError",
     });
 
+    assert.ok(killCalls.length > 0, "kill should have been called");
+  });
+
+  it("pre-aborted signal + child error (ENOENT) rejects cleanly without unhandled error", async () => {
+    const emitter = new EventEmitter();
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    const stdin = new PassThrough();
+    const killCalls: string[] = [];
+
+    const child = Object.assign(emitter, {
+      stdout,
+      stderr,
+      stdin,
+      kill(sig?: string) {
+        killCalls.push(sig ?? "SIGTERM");
+        // Simulate spawn failure: error fires, then close
+        setImmediate(() => {
+          emitter.emit(
+            "error",
+            Object.assign(new Error("spawn claude ENOENT"), { code: "ENOENT" })
+          );
+          emitter.emit("close", null);
+        });
+      },
+    });
+
+    const controller = new AbortController();
+    controller.abort(); // already aborted before call
+
+    const spawn = (() => child) as unknown as SpawnFn;
+
+    // Must reject (with either AbortError or ENOENT), must not throw unhandled error
+    await assert.rejects(runClaudeCli("hi", { signal: controller.signal }, { spawn }));
     assert.ok(killCalls.length > 0, "kill should have been called");
   });
 });

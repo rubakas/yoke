@@ -7,7 +7,14 @@ import { makeRunClaudeCliFunction } from "./runClaudeCli.js";
 import type { ModelRegistry } from "./registry.js";
 import type { SpawnFn } from "./runClaudeCli.js";
 import type { TicketStore } from "../module/seams.js";
-import type { DataValue, LooseDataValue, NodeRunGraphOptions, Project } from "@ironclad/rivet-node";
+import type {
+  DataValue,
+  DynamicGraphRun,
+  LooseDataValue,
+  NodeRunGraphOptions,
+  Project,
+  RivetDebuggerServer,
+} from "@ironclad/rivet-node";
 
 export interface RivetHostDeps {
   registry: ModelRegistry;
@@ -17,6 +24,8 @@ export interface RivetHostDeps {
   spawn?: SpawnFn;
   /** Pass `false` to skip starting the debugger server (useful in tests). */
   debuggerPort?: number | false;
+  /** Handler for editor-initiated 'run' messages (enables --no-run / dynamicGraphRun). */
+  dynamicGraphRun?: DynamicGraphRun;
 }
 
 export interface RivetHost {
@@ -36,10 +45,12 @@ export interface RivetHost {
     opts?: { graph?: string; abortSignal?: AbortSignal }
   ): Promise<Record<string, DataValue>>;
   close(): Promise<void>;
+  /** The underlying debugger server, if started (undefined when debuggerPort=false). */
+  debuggerServer?: RivetDebuggerServer;
 }
 
 export function createRivetHost(deps: RivetHostDeps): RivetHost {
-  const { registry, store, io, env, spawn, debuggerPort = 21888 } = deps;
+  const { registry, store, io, env, spawn, debuggerPort = 21888, dynamicGraphRun } = deps;
 
   const externalFunctions: Record<string, ExternalFunction> = {
     runClaudeCli: makeRunClaudeCliFunction(registry, { spawn, env }),
@@ -72,14 +83,23 @@ export function createRivetHost(deps: RivetHostDeps): RivetHost {
 
   const onUserInput: RivetHost["onUserInput"] = ({ inputStrings, callback }) => {
     const question = inputStrings.join("\n");
-    void io.ask(question).then((answer) => {
-      callback({ type: "string[]", value: [answer] });
-    });
+    void io
+      .ask(question)
+      .then((answer) => {
+        callback({ type: "string[]", value: [answer] });
+      })
+      .catch((err: unknown) => {
+        // io.ask rejection: log and answer with empty string, which fails "starts with y" gate
+        console.error("io.ask failed:", err);
+        callback({ type: "string[]", value: [""] });
+      });
   };
 
   // Start the debugger server (one-time, reused across runs)
   const debuggerServer =
-    debuggerPort !== false ? startDebuggerServer({ port: debuggerPort }) : undefined;
+    debuggerPort !== false
+      ? startDebuggerServer({ port: debuggerPort, dynamicGraphRun })
+      : undefined;
 
   const runOptions = (): NodeRunGraphOptions => {
     // Gather openAiKey from the first api entry that has a keyEnv
@@ -116,5 +136,13 @@ export function createRivetHost(deps: RivetHostDeps): RivetHost {
     }
   };
 
-  return { externalFunctions, getChatNodeEndpoint, onUserInput, runOptions, runProject, close };
+  return {
+    externalFunctions,
+    getChatNodeEndpoint,
+    onUserInput,
+    runOptions,
+    runProject,
+    close,
+    debuggerServer,
+  };
 }

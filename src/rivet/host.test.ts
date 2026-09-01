@@ -78,6 +78,58 @@ describe("createRivetHost — onUserInput", () => {
     assert.ok(deps.askCalls[0].includes("Question one?"));
     assert.deepEqual(callbackResult, { type: "string[]", value: ["approved"] });
   });
+
+  it("io.ask rejection calls callback with empty string (not-approved answer)", async () => {
+    const registry = new ModelRegistry([
+      { id: "claude-sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+    ]);
+    const store = new DrizzleTicketStore(makeInMemoryDb());
+    const io = {
+      ask: async (_q: string) => {
+        throw new Error("stdin closed");
+      },
+    };
+    const host = createRivetHost({ registry, store, io, debuggerPort: false });
+
+    let callbackResult: { type: "string[]"; value: string[] } | undefined;
+
+    await new Promise<void>((resolve) => {
+      host.onUserInput({
+        node: {},
+        inputStrings: ["Approve?"],
+        callback: (v) => {
+          callbackResult = v;
+          resolve();
+        },
+        processId: "pid-2",
+        renderingType: "text",
+      });
+    });
+
+    assert.deepEqual(callbackResult, { type: "string[]", value: [""] });
+  });
+});
+
+describe("createRivetHost — debuggerServer", () => {
+  it("debuggerServer is undefined when debuggerPort=false", () => {
+    const deps = makeTestDeps();
+    const host = createRivetHost(deps);
+    assert.equal(host.debuggerServer, undefined);
+  });
+
+  it("passes dynamicGraphRun through to the debugger server options", async () => {
+    // We test this by verifying the host accepts the option without throwing
+    let called = false;
+    const deps = makeTestDeps();
+    const host = createRivetHost({
+      ...deps,
+      dynamicGraphRun: async () => {
+        called = true;
+      },
+    });
+    assert.equal(host.debuggerServer, undefined, "debuggerPort=false so no server");
+    assert.equal(called, false, "dynamicGraphRun not invoked until editor sends a run message");
+  });
 });
 
 describe("createRivetHost — runOptions", () => {

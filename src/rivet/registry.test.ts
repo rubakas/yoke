@@ -75,4 +75,22 @@ describe("defaultRegistry", () => {
     const entry = reg.resolve("litellm");
     assert.ok(entry.api?.endpoint.includes("localhost:4000"));
   });
+
+  it("ollama-qwen has model qwen2.5:1.5b", () => {
+    const reg = defaultRegistry({});
+    const entry = reg.resolve("ollama-qwen");
+    assert.equal(entry.api?.model, "qwen2.5:1.5b");
+  });
+
+  it("litellm model defaults to 'default' when LITELLM_MODEL not set", () => {
+    const reg = defaultRegistry({});
+    const entry = reg.resolve("litellm");
+    assert.equal(entry.api?.model, "default");
+  });
+
+  it("litellm model uses LITELLM_MODEL env var when set", () => {
+    const reg = defaultRegistry({ LITELLM_MODEL: "my-model" });
+    const entry = reg.resolve("litellm");
+    assert.equal(entry.api?.model, "my-model");
+  });
 });

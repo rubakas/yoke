@@ -26,7 +26,7 @@ export async function persistTicket(
   spec: HardenedSpec
 ): Promise<{ ticketId: number }> {
   const ticket = await store.createTicket({
-    slug: `rivet-${Date.now()}`,
+    slug: `rivet-${randomUUID()}`,
     title: spec.title,
     body: spec.description,
     intent: "rivet:spec-creation",

@@ -6,7 +6,7 @@ export interface ModelEntry {
   id: string;
   transport: ModelTransport;
   cli?: { bin: "claude" | "codex"; model?: string };
-  api?: { endpoint: string; keyEnv?: string };
+  api?: { endpoint: string; keyEnv?: string; model?: string };
 }
 
 export class ModelRegistry {
@@ -40,6 +40,7 @@ export function defaultRegistry(env: NodeJS.ProcessEnv = process.env): ModelRegi
       transport: "api",
       api: {
         endpoint: `${env.OLLAMA_BASE_URL ?? "http://localhost:11434"}/v1/chat/completions`,
+        model: "qwen2.5:1.5b",
       },
     },
     {
@@ -48,6 +49,7 @@ export function defaultRegistry(env: NodeJS.ProcessEnv = process.env): ModelRegi
       api: {
         endpoint: `${env.LITELLM_BASE_URL ?? "http://localhost:4000"}/v1/chat/completions`,
         keyEnv: "LITELLM_VIRTUAL_KEY",
+        model: env.LITELLM_MODEL ?? "default",
       },
     },
   ]);

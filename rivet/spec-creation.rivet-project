@@ -1,0 +1,309 @@
+version: 4
+data:
+  graphs:
+    yoke-spec-creation:
+      metadata:
+        id: yoke-spec-creation
+        name: spec-creation
+      nodes:
+        '[yoke-helper-approve-array]:array "Approve Questions"':
+          data:
+            flatten: true
+            flattenDeep: false
+          outgoingConnections:
+            - output->"approve" yoke-step-approve/questions
+          visualData: 3650/700/200/null//
+        '[yoke-helper-approve-prompt]:text "Approve Prompt"':
+          data:
+            normalizeLineEndings: true
+            text: |-
+              Approve this hardened spec? (yes/no)
+
+              {{spec}}
+          outgoingConnections:
+            - output->"Approve Questions" yoke-helper-approve-array/input1
+          visualData: 3300/600/300/null//
+        '[yoke-helper-assemble]:code "assemble"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            code: >-
+              function parseJson(s) {
+                try {
+                  return JSON.parse(
+                    String(s ?? '').replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim()
+                  );
+                } catch (e) { console.error("assemble: JSON parse failed:", e); return null; }
+              }
+
+              const enrichText = String(inputs.enrich?.value ?? '');
+
+              const criticText = String(inputs.critic?.value ?? '');
+
+              const securityText = String(inputs.security?.value ?? '');
+
+              const titleMatch = enrichText.match(/^#+\s+(.+)$/m) ??
+              enrichText.match(/^(.+)$/m);
+
+              const title = titleMatch ? titleMatch[1].trim() : 'Untitled';
+
+              const criticData = parseJson(criticText);
+
+              const secData = parseJson(securityText);
+
+              const spec = {
+                title,
+                description: enrichText,
+                requirements: [],
+                acceptanceCriteria: [],
+                weaknesses: criticData?.weaknesses ?? [],
+                securityFindings: secData?.securityFindings ?? secData?.findings ?? []
+              };
+
+              return { spec: { type: 'string', value: JSON.stringify(spec) } };
+            inputNames:
+              - enrich
+              - critic
+              - security
+            outputNames:
+              - spec
+          outgoingConnections:
+            - spec->"Approve Prompt" yoke-helper-approve-prompt/spec
+            - spec->"Ticket Args" yoke-helper-ct-array/input1
+            - spec->"spec output" yoke-helper-out-spec/value
+          visualData: 2800/700/300/null//
+        '[yoke-helper-critic-args]:array "critic Args"':
+          data:
+            flatten: true
+            flattenDeep: false
+          outgoingConnections:
+            - output->"critic" yoke-step-critic/arguments
+          visualData: 1750/700/200/null//
+        '[yoke-helper-critic-modelid]:text "critic Model"':
+          data:
+            normalizeLineEndings: true
+            text: claude-sonnet
+          outgoingConnections:
+            - output->"critic Args" yoke-helper-critic-args/input2
+          visualData: 1400/820/300/null//
+        '[yoke-helper-critic-prompt]:text "critic Prompt"':
+          data:
+            normalizeLineEndings: true
+            text: |-
+              You are an adversarial critic. Review this spec for weaknesses — gaps, ambiguities, missing edge cases. Respond with STRICT JSON only, no markdown fences: {"weaknesses":[{"text":"...","severity":"low|medium|high","blocking":false}]}
+
+              Spec to review:
+              {{spec}}
+          outgoingConnections:
+            - output->"critic Args" yoke-helper-critic-args/input1
+          visualData: 1400/580/300/null//
+        '[yoke-helper-ct-array]:array "Ticket Args"':
+          data:
+            flatten: true
+            flattenDeep: false
+          outgoingConnections:
+            - output->"If Approved" yoke-helper-gate-if/value
+          visualData: 4750/550/200/null//
+        '[yoke-helper-enrich-prompt]:text "enrich Prompt"':
+          data:
+            normalizeLineEndings: true
+            text: >-
+              Enrich this spec: add missing edge cases, non-functional
+              requirements, and clarify ambiguities. Keep the # Title heading.
+              Return the improved spec as markdown.
+
+
+              Spec:
+
+              {{spec}}
+          outgoingConnections:
+            - output->"enrich" yoke-step-enrich/prompt
+          visualData: 1400/140/300/null//
+        '[yoke-helper-gate-if]:if "If Approved"':
+          data:
+            unconnectedControlFlowExcluded: true
+          outgoingConnections:
+            - output->"create-ticket" yoke-step-create-ticket/arguments
+          visualData: 4750/700/125/null//
+        '[yoke-helper-gate]:code "Gate"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            code: >-
+              const answers = inputs.answer?.value;
+
+              const first = (Array.isArray(answers) ? (answers[0] ?? '') :
+              String(answers ?? '')).trim().toLowerCase();
+
+              return { approved: { type: 'boolean', value: first.startsWith('y')
+              } };
+            inputNames:
+              - answer
+            outputNames:
+              - approved
+          outgoingConnections:
+            - approved->"If Approved" yoke-helper-gate-if/if
+            - approved->"approved output" yoke-helper-out-approved/value
+          visualData: 4400/700/300/null//
+        '[yoke-helper-graph-input]:graphInput "Request Input"':
+          data:
+            dataType: string
+            id: request
+            useDefaultValueInput: false
+          outgoingConnections:
+            - data->"intake Prompt" yoke-helper-intake-prompt/request
+          visualData: 0/400/300/null//
+        '[yoke-helper-intake-args]:array "intake Args"':
+          data:
+            flatten: true
+            flattenDeep: false
+          outgoingConnections:
+            - output->"intake" yoke-step-intake/arguments
+          visualData: 700/400/200/null//
+        '[yoke-helper-intake-modelid]:text "intake Model"':
+          data:
+            normalizeLineEndings: true
+            text: claude-sonnet
+          outgoingConnections:
+            - output->"intake Args" yoke-helper-intake-args/input2
+          visualData: 350/520/300/null//
+        '[yoke-helper-intake-prompt]:text "intake Prompt"':
+          data:
+            normalizeLineEndings: true
+            text: "You are a product analyst. Produce a concise spec draft with a # Title
+              heading, description, 3-7 requirements, and 3-5 acceptance
+              criteria for: {{request}}"
+          outgoingConnections:
+            - output->"intake Args" yoke-helper-intake-args/input1
+          visualData: 350/280/300/null//
+        '[yoke-helper-out-approved]:graphOutput "approved output"':
+          data:
+            dataType: boolean
+            id: approved
+          visualData: 5600/700/300/null//
+        '[yoke-helper-out-spec]:graphOutput "spec output"':
+          data:
+            dataType: string
+            id: spec
+          visualData: 5600/400/300/null//
+        '[yoke-helper-out-ticket]:graphOutput "ticketId output"':
+          data:
+            dataType: number
+            id: ticketId
+          visualData: 5600/1000/300/null//
+        '[yoke-helper-security-args]:array "security Args"':
+          data:
+            flatten: true
+            flattenDeep: false
+          outgoingConnections:
+            - output->"security" yoke-step-security/arguments
+          visualData: 1750/1200/200/null//
+        '[yoke-helper-security-modelid]:text "security Model"':
+          data:
+            normalizeLineEndings: true
+            text: claude-sonnet
+          outgoingConnections:
+            - output->"security Args" yoke-helper-security-args/input2
+          visualData: 1400/1320/300/null//
+        '[yoke-helper-security-prompt]:text "security Prompt"':
+          data:
+            normalizeLineEndings: true
+            text: |-
+              You are a security analyst. Review this spec for security risks. Respond with STRICT JSON only, no markdown fences: {"securityFindings":[{"text":"...","severity":"low|medium|high|critical","blocking":false}]}
+
+              Spec to review:
+              {{spec}}
+          outgoingConnections:
+            - output->"security Args" yoke-helper-security-args/input1
+          visualData: 1400/1080/300/null//
+        '[yoke-step-approve]:userInput "approve"':
+          data:
+            prompt: This is an example question?
+            useInput: true
+          outgoingConnections:
+            - output->"Gate" yoke-helper-gate/answer
+          visualData: 4000/700/250/null//
+        '[yoke-step-create-ticket]:externalCall "create-ticket"':
+          data:
+            functionName: persistTicket
+            useErrorOutput: false
+            useFunctionNameInput: false
+          outgoingConnections:
+            - result->"ticketId output" yoke-helper-out-ticket/value
+          visualData: 5100/700/150/null//
+        '[yoke-step-critic]:externalCall "critic"':
+          data:
+            functionName: runClaudeCli
+            useErrorOutput: false
+            useFunctionNameInput: false
+          outgoingConnections:
+            - result->"assemble" yoke-helper-assemble/critic
+          visualData: 2100/700/150/null//
+        '[yoke-step-enrich]:chat "enrich"':
+          data:
+            additionalParameters: []
+            cache: false
+            enableFunctionUse: false
+            endpoint: http://localhost:11434/v1/chat/completions
+            maxTokens: 1024
+            modalitiesIncludeAudio: false
+            modalitiesIncludeText: false
+            model: gpt-4o-mini
+            outputUsage: false
+            overrideModel: qwen2.5:1.5b
+            parallelFunctionCalling: true
+            reasoningEffort: ""
+            stop: ""
+            temperature: 0.5
+            top_p: 1
+            useAdditionalParametersInput: false
+            useAsGraphPartialOutput: true
+            useFrequencyPenaltyInput: false
+            useMaxTokensInput: false
+            useModelInput: false
+            usePredictedOutput: false
+            usePresencePenaltyInput: false
+            useReasoningEffortInput: false
+            useServerTokenCalculation: true
+            useStop: false
+            useStopInput: false
+            useTemperatureInput: false
+            useTopP: false
+            useTopPInput: false
+            useUseTopPInput: false
+            useUserInput: false
+          outgoingConnections:
+            - response->"assemble" yoke-helper-assemble/enrich
+            - response->"critic Prompt" yoke-helper-critic-prompt/spec
+            - response->"security Prompt" yoke-helper-security-prompt/spec
+          visualData: 1750/200/200/null//
+        '[yoke-step-intake]:externalCall "intake"':
+          data:
+            functionName: runClaudeCli
+            useErrorOutput: false
+            useFunctionNameInput: false
+          outgoingConnections:
+            - result->"enrich Prompt" yoke-helper-enrich-prompt/spec
+          visualData: 1050/400/150/null//
+        '[yoke-step-security]:externalCall "security"':
+          data:
+            functionName: runClaudeCli
+            useErrorOutput: false
+            useFunctionNameInput: false
+          outgoingConnections:
+            - result->"assemble" yoke-helper-assemble/security
+          visualData: 2100/1200/150/null//
+  metadata:
+    description: "6-step spec-creation workflow: intake → enrich → critic → security
+      → approve → create-ticket"
+    id: yoke-spec-creation-project
+    mainGraphId: yoke-spec-creation
+    title: Yoke Spec Creation
+  plugins: []
+  references: []
