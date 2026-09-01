@@ -12,6 +12,7 @@ export interface Config {
   telemetryPath: string;
   attachToken: string | undefined;
   serverPort: number;
+  serverUrl: string;
 }
 
 function requireEnv(name: string): string {
@@ -51,6 +52,8 @@ export function loadConfig(): Config {
       ? rawServerPort
       : 4100;
 
+  const serverUrl = process.env.YOKE_SERVER_URL ?? `http://localhost:${serverPort}`;
+
   return {
     litellmBaseUrl: process.env.LITELLM_BASE_URL ?? "http://localhost:4000/v1",
     litellmVirtualKey: requireEnv("LITELLM_VIRTUAL_KEY"),
@@ -62,5 +65,6 @@ export function loadConfig(): Config {
     telemetryPath: process.env.YOKE_TELEMETRY_PATH ?? "./yoke-telemetry.jsonl",
     attachToken: process.env.YOKE_ATTACH_TOKEN,
     serverPort,
+    serverUrl,
   };
 }

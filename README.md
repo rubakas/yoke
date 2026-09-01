@@ -38,6 +38,8 @@ MVP in progress: Stage 1 (spec hardening) implemented end-to-end. Stages 2–4 (
 - [0006. Stage-2 executor: real Claude Code via pi-claude-cli](docs/decisions/0006-stage2-real-claude-code.md)
 - [0007. Deployment: containerized nodes + headless server + remote attach](docs/decisions/0007-deployment-containerized-nodes.md)
 - [0008. Linting and Formatting Toolchain](docs/decisions/0008-linting-and-formatting.md)
+- [0009. MVP Telemetry: JSONL Sink](docs/decisions/0009-telemetry-jsonl-sink-mvp.md)
+- [0010. Orchestrator Transport: HTTP + SSE](docs/decisions/0010-orchestrator-transport-http-sse.md)
 
 **Hardened Specs (per-feature):**
 See [`specs/`](specs/) for the full set: stage1-hardening, module-system, tracker-provider, executor, stage2-development, stage3-testing, stage4-audit, orchestrator-server, observability.
@@ -64,6 +66,26 @@ pnpm db:generate && pnpm db:migrate
 # 5. Run the CLI
 pnpm dev harden -             # interactive free-text mode
 pnpm dev harden 42            # seed from GitHub issue #42
+```
+
+### Orchestrator (multi-machine)
+
+`yoke serve` starts a headless node that exposes an HTTP+SSE API (default port 4100).
+From a client machine, point `YOKE_SERVER_URL` at it and optionally set `YOKE_ATTACH_TOKEN`
+for bearer-token auth. Reach the node over Tailscale or an SSH tunnel.
+
+```sh
+# On the node
+YOKE_ATTACH_TOKEN=secret pnpm dev serve
+
+# From a client
+export YOKE_SERVER_URL=http://node-host:4100
+export YOKE_ATTACH_TOKEN=secret
+pnpm dev ps                        # list runs
+pnpm dev attach 1                  # stream live events for run 1
+pnpm dev steer 1 pause             # pause run 1
+pnpm dev steer 1 resume            # resume run 1
+curl -H "Authorization: Bearer secret" $YOKE_SERVER_URL/runs  # raw API
 ```
 
 **Quality gates** (run before commit):
