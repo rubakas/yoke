@@ -57,6 +57,7 @@ export class TestStage implements Stage {
     const maxIters = ctx.maxFixIters ?? 2;
 
     let last: ProcessResult | undefined;
+    let passedIter = 0;
     for (let iter = 0; iter <= maxIters; iter++) {
       last = await ctx.runProcess(testCommand[0], testCommand.slice(1), ctx.workdir);
       await ctx.store.addProvenance({
@@ -66,7 +67,10 @@ export class TestStage implements Stage {
         model: last.ok ? "pass" : "fail",
         runId: (this.deps.generateId ?? randomUUID)(),
       });
-      if (last.ok) break;
+      if (last.ok) {
+        passedIter = iter + 1;
+        break;
+      }
       // Failing — drive the executor to fix, if available and iterations remain.
       if (iter < maxIters && ctx.executor) {
         await ctx.executor.run({ spec: renderFixSpec(ticket, last.output), workdir: ctx.workdir });
@@ -79,7 +83,7 @@ export class TestStage implements Stage {
       await ctx.store.updateState(ctx.ticketId, "tested");
       return {
         status: "passed",
-        artifacts: { iterations: String(1) },
+        artifacts: { iterations: String(passedIter) },
       };
     }
 
