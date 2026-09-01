@@ -86,8 +86,8 @@ else
 fi
 
 # ── 5. Preflight doctor ───────────────────────────────────────────────────────
-step "pnpm doctor"
-run pnpm doctor
+step "pnpm run doctor"
+run pnpm run doctor
 
 # ── 6. Build ──────────────────────────────────────────────────────────────────
 step "pnpm build"

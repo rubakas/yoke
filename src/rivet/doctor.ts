@@ -3,6 +3,7 @@
 import { execFile, execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -318,7 +319,8 @@ export function hasFailures(results: CheckResult[]): boolean {
 
 // ── Entry point (tsx src/rivet/doctor.ts) ────────────────────────────────────
 const isMain =
-  typeof process.argv[1] === "string" && fileURLToPath(import.meta.url) === process.argv[1];
+  typeof process.argv[1] === "string" &&
+  fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 
 if (isMain) {
   const results = await runDoctor(defaultProbes());

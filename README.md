@@ -30,7 +30,7 @@ pnpm bootstrap
 **Troubleshoot:**
 
 ```sh
-pnpm doctor      # preflight check with fix hints for each missing prereq
+pnpm run doctor  # preflight check with fix hints for each missing prereq
 ```
 
 ---
