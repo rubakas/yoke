@@ -2,74 +2,138 @@
 
 A modular, TypeScript workflow-control harness for LLM-driven software development.
 
-Yoke turns a task into a **hardened spec** — through a conversational intake plus an
-adversarial review (criticism + a security pre-check) — then drives it through four gated
-stages, **spec → development → testing → audit / security / bugfix**, with per-agent logs
-and whole-flow monitoring in one place.
+Yoke turns a request into a **hardened spec** through an adversarial pipeline: intake → enrichment → parallel criticism and security review → assembly → approval gate → persisted ticket. Pipelines are defined once as provider-neutral data (YAML + prompt files) and executed by thin bindings to Claude, Mastra, or other runtimes.
 
-## Quick start (Rivet spike)
+## Charter
+
+**What Yoke is.** A harness for building, editing and running dynamic workflows for
+LLM-assisted software development. Workflows, steps, skills and agents are provider-neutral
+templates stored as data. The same template runs against whichever model providers are
+currently active.
+
+**The goal.** One canonical definition, many execution backends. A workflow authored once
+runs unchanged when the underlying provider changes — swapping providers is a registry edit,
+not a rewrite.
+
+**Operating surface.** Chat. Templates are files; creating and editing them is a chat and
+file operation (ADR-0011). A visual workflow editor is desirable but no evaluated option has
+met the bar, so it is deliberately out of scope until one does.
+
+**Rules** (invariants, not preferences):
+
+1. Provider portability is an acceptance criterion, not a feature — the same pipeline must
+   run under at least two independent providers.
+2. Layer-0 key isolation — no provider API keys in the Yoke process environment; child
+   processes receive a scrubbed environment (ADR-0004).
+3. The canon stays provider-neutral; anything harness-specific lives in a binding
+   (ADR-0011).
+4. One self-nesting `pipeline`; the leaf is `step`; the term "Action" is not used
+   (ADR-0012).
+5. No speculative abstraction — a layer appears when a second real consumer needs it.
+6. Documentation is ADRs, lean specs and the code itself. No large design documents.
+7. Anthropic-first is a current experiment, not an architectural commitment.
+
+## Quick start
 
 **Prerequisites (cannot be auto-installed):**
 
 - Node ≥ 22: `nvm install 22` (`.nvmrc` pins the version)
-- Rivet desktop app: `brew install --cask rivet`
 - `claude` CLI installed and logged in: see https://docs.claude.com/en/docs/claude-code, then `claude auth login`
 
+**Validate and generate:**
+
 ```sh
-./bootstrap.sh   # installs deps, builds, runs doctor, starts host
-# or
-pnpm bootstrap
+pnpm canon:check              # validate pipeline definitions
+pnpm bindings:claude          # generate Claude Code workflow into .claude/workflows/
+```
+
+**Start the MCP server:**
+
+```sh
+pnpm mcp                      # stdio MCP server for any MCP-capable chat client to connect
+```
+
+**Run the pipeline end-to-end (standalone):**
+
+```sh
+pnpm mastra:smoke             # execute pipeline with test input
+pnpm mastra:smoke --db ./custom.sqlite --intake-model opus  # with flags
+```
+
+**Persist a hardened spec:**
+
+```sh
+echo '{"title":"T","description":"D"}' | pnpm persist --db ./yoke.sqlite
+pnpm persist --file spec.json --db ./yoke.sqlite
+```
+
+**Preflight check:**
+
+```sh
+pnpm run doctor               # verify all prerequisites; fix hints for each missing item
+```
+
+---
+
+## Optional: Rivet host and editor
+
+Rivet was evaluated as a workflow engine and visual editor (ADR-0011); the engine passed but the operator experience did not, and the question of a visual editor is still open. This section is kept but is not the primary way to run Yoke.
+
+**Additional prerequisites:**
+
+- Rivet desktop app: `brew install --cask rivet`
+
+**Launch Rivet host (starts on default port 21888):**
+
+```sh
+./bootstrap.sh                # installs deps, builds, runs doctor, starts Rivet host
+# or manually:
+pnpm rivet:host
 ```
 
 **Attach the Rivet editor:**
 
 1. Open Rivet.app
-2. Action bar → Remote Debugger → connect to `ws://localhost:21888` (unauthenticated localhost WebSocket — do not port-forward or expose remotely)
+2. Action bar → Remote Debugger → connect to `ws://localhost:21888` (unauthenticated localhost WebSocket — **do not port-forward or expose remotely**)
 3. File → Open → `rivet/spec-creation.rivet-project`
-
-**Troubleshoot:**
-
-```sh
-pnpm run doctor  # preflight check with fix hints for each missing prereq
-```
 
 ---
 
 ## Status
 
-MVP in progress: Stage 1 (spec hardening) implemented end-to-end. Stages 2–4 (development, testing, audit) planned.
+**Built (ready to use):**
 
-**Key facts:**
-
-- Module system: 7 typed seams (TrackerProvider, ModelGateway, Executor, Stage, Check, TicketStore, TelemetrySink) + Registry + config Manifest.
-- Stage 1 end-to-end: `pnpm dev harden <issue-ref | ->` outputs a git-backed Spec Kit spec.md.
-- SQLite ticket-store is the pipeline source of truth (better-sqlite3 + Drizzle).
-- Layer-0 key isolation: Yoke never holds a real provider key, only a LiteLLM virtual key.
+- **Provider-neutral canon** — `pipelines/*.yaml` + `prompts/*.md` + loader (`src/canon/`); schema includes llm, gate, assemble-spec, persist-ticket; steps execute in parallel via `phase` grouping (ADR-0012).
+- **Binding A** — Claude Code dynamic workflow generator (`.claude/workflows/*.js`, generated via `pnpm bindings:claude`); approval gates happen in chat between runs; subscription-billed; exit path is Binding B.
+- **Binding B** — Mastra interpreter + MCP server (Apache-2.0); durable suspend/resume HITL; steps execute via the open model registry (`pnpm mcp` starts the server; `pnpm mastra:smoke` runs standalone).
+- **Model registry** — open; CLI aliases + passthrough of any model id; local `claude`/`codex` CLIs on subscription auth, Ollama local models, keyed APIs via LiteLLM.
+- **SQLite ticket store** — pipeline source of truth (better-sqlite3 + Drizzle); accepts persisted HardenedSpec JSON (via `pnpm persist --db ./yoke.sqlite`).
+- **Layer-0 key isolation** — Yoke process environment holds no real provider keys; child processes receive scrubbed environment (Charter invariant).
 
 ## Current direction
 
-- **Single kernel** — built on [Pi](https://github.com/earendil-works/pi) (agent runtime;
-  drives Claude Code / Codex as sub-agents) + a SQLite ticket-store as the pipeline source
-  of truth + a thin orchestrator. No separate durable engine (optional later).
-- **Spec-driven** — the hardened spec is a git-backed artifact (Spec Kit–style), seeded
-  from a GitHub issue.
-- **Trust & supply-chain first** — provider keys isolated behind a local proxy, disabled
-  install scripts, pinned dependencies, sandbox + network-egress allowlist.
+**One canonical pipeline definition, many execution backends.** Chat-first operation via any MCP-capable client (Claude Code, Codex, or other). The same canon (provider-neutral YAML + prompts) runs unchanged against any configured model provider — swapping providers is a registry edit, not a code change (ADR-0011, ADR-0012). Provider portability is an acceptance criterion, enforced by smoke-testing the same pipeline under at least two independent bindings.
+
+The visual workflow editor question remains open — no currently evaluated option meets the bar, so visual authoring is deliberately out of scope until one does. Rivet engine passed evaluation but UX needs work; kept in-repo as an optional path.
+
+Current milestone: [`specs/013-provider-portable-templates`](specs/013-provider-portable-templates/spec.md) — validate full portability, close the registry, and harden the operator-facing APIs (canon validation, binding generation, ticket persistence).
 
 ### Architecture & Design Record
 
 **Architecture Decisions (ADRs):**
 
-- [0001. Base runtime: Pi](docs/decisions/0001-base-runtime-pi.md)
+- [0001. Base runtime: Pi](docs/decisions/0001-base-runtime-pi.md) (superseded by ADR-0011)
 - [0002. Single kernel per node](docs/decisions/0002-single-kernel-per-node.md)
 - [0003. Spec = git-backed SDD artifact](docs/decisions/0003-spec-is-git-backed-sdd.md)
 - [0004. Supply-chain security posture](docs/decisions/0004-supply-chain-security-posture.md)
 - [0005. TypeScript substrate](docs/decisions/0005-ts-substrate.md)
-- [0006. Stage-2 executor: real Claude Code via pi-claude-cli](docs/decisions/0006-stage2-real-claude-code.md)
+- [0006. Stage-2 executor: real Claude Code via pi-claude-cli](docs/decisions/0006-stage2-real-claude-code.md) (superseded by ADR-0011)
 - [0007. Deployment: containerized nodes + headless server + remote attach](docs/decisions/0007-deployment-containerized-nodes.md)
 - [0008. Linting and Formatting Toolchain](docs/decisions/0008-linting-and-formatting.md)
-- [0009. MVP Telemetry: JSONL Sink](docs/decisions/0009-telemetry-jsonl-sink-mvp.md)
-- [0010. Orchestrator Transport: HTTP + SSE](docs/decisions/0010-orchestrator-transport-http-sse.md)
+- [0009. MVP Telemetry: JSONL Sink](docs/decisions/0009-telemetry-jsonl-sink-mvp.md) (superseded by ADR-0011)
+- [0010. Orchestrator Transport: HTTP + SSE](docs/decisions/0010-orchestrator-transport-http-sse.md) (superseded by ADR-0011)
+- [0011. Chat-first canon and bindings](docs/decisions/0011-chat-first-canon-and-bindings.md)
+- [0012. Canon ontology: single-nesting pipeline](docs/decisions/0012-canon-ontology-single-nesting-pipeline.md)
 
 **Hardened Specs (per-feature):**
 See [`specs/`](specs/) for the full set: stage1-hardening, module-system, tracker-provider, executor, stage2-development, stage3-testing, stage4-audit, orchestrator-server, observability.
