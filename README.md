@@ -98,26 +98,6 @@ pnpm dev harden -             # interactive free-text mode
 pnpm dev harden 42            # seed from GitHub issue #42
 ```
 
-### Orchestrator (multi-machine)
-
-`yoke serve` starts a headless node that exposes an HTTP+SSE API (default port 4100).
-From a client machine, point `YOKE_SERVER_URL` at it and optionally set `YOKE_ATTACH_TOKEN`
-for bearer-token auth. Reach the node over Tailscale or an SSH tunnel.
-
-```sh
-# On the node
-YOKE_ATTACH_TOKEN=secret pnpm dev serve
-
-# From a client
-export YOKE_SERVER_URL=http://node-host:4100
-export YOKE_ATTACH_TOKEN=secret
-pnpm dev ps                        # list runs
-pnpm dev attach 1                  # stream live events for run 1
-pnpm dev steer 1 pause             # pause run 1
-pnpm dev steer 1 resume            # resume run 1
-curl -H "Authorization: Bearer secret" $YOKE_SERVER_URL/runs  # raw API
-```
-
 **Quality gates** (run before commit):
 
 ```sh

@@ -1,8 +1,7 @@
 // Core types for the module system — seam names, module descriptors, and manifest shape.
 
 /** Union of all pluggable seam names. */
-export type SeamName =
-  "tracker" | "model" | "executor" | "stage" | "check" | "ticketStore" | "telemetry";
+export type SeamName = "tracker" | "model" | "executor" | "check" | "ticketStore";
 
 /**
  * A module descriptor — declares identity, which seam it satisfies,

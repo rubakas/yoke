@@ -8,7 +8,6 @@ import type {
   weaknesses,
   securityFindings,
   provenance,
-  stageRuns,
 } from "../db/schema.js";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
@@ -87,7 +86,7 @@ export interface Executor {
   run(input: ExecutorInput): Promise<ExecutorResult>;
 }
 
-// ── Stage ─────────────────────────────────────────────────────────────────────
+// ── ProcessRunner ─────────────────────────────────────────────────────────────
 
 export interface ProcessResult {
   ok: boolean;
@@ -95,38 +94,6 @@ export interface ProcessResult {
 }
 
 export type ProcessRunner = (cmd: string, args: string[], cwd: string) => Promise<ProcessResult>;
-
-export interface StageContext {
-  ticketId: number;
-  store: TicketStore;
-  model: ModelGateway;
-  io: { ask: (p: string) => Promise<string>; confirm: (p: string) => Promise<boolean> };
-  workdir: string;
-  outDir: string;
-  telemetry?: TelemetrySink;
-  tracker?: TrackerProvider;
-  executor?: Executor;
-  checks?: Record<string, Check>;
-  exportSpec?: (ticket: FullTicket, outDir: string) => Promise<string>;
-  runProcess?: ProcessRunner;
-  testCommand?: string[];
-  maxFixIters?: number;
-}
-
-export interface StageResult {
-  status: "passed" | "blocked" | "failed";
-  reason?: string;
-  artifacts?: Record<string, string>;
-}
-
-/**
- * A single pipeline stage (intake, critic, security, …).
- * Implementations register themselves by name so the orchestrator can sequence them.
- */
-export interface Stage {
-  readonly name: string;
-  run(ctx: StageContext): Promise<StageResult>;
-}
 
 // ── Check ─────────────────────────────────────────────────────────────────────
 
@@ -162,7 +129,6 @@ export type AcceptanceCriterionRow = InferSelectModel<typeof acceptanceCriteria>
 export type WeaknessRow = InferSelectModel<typeof weaknesses>;
 export type SecurityFindingRow = InferSelectModel<typeof securityFindings>;
 export type ProvenanceRow = InferSelectModel<typeof provenance>;
-export type StageRunRow = InferSelectModel<typeof stageRuns>;
 
 type TicketState = TicketRow["state"];
 
@@ -218,41 +184,4 @@ export interface TicketStore {
   listSecurityFindings(ticketId: number): Promise<SecurityFindingRow[]>;
   listProvenance(ticketId: number): Promise<ProvenanceRow[]>;
   listTickets(): Promise<TicketRow[]>;
-  startStageRun(ticketId: number, stageName: string): Promise<StageRunRow>;
-  completeStageRun(
-    runId: number,
-    status: "passed" | "blocked" | "failed",
-    reason?: string
-  ): Promise<void>;
-  listStageRuns(ticketId: number): Promise<StageRunRow[]>;
-}
-
-// ── RunControl ────────────────────────────────────────────────────────────────
-
-/** Operator control over a running pipeline (impl lives in the orchestrator). */
-export interface RunControl {
-  /** True once the operator aborted the run. */
-  readonly isAborted: boolean;
-  /** Resolves immediately unless paused; while paused, resolves when resumed or aborted. */
-  checkpoint(): Promise<void>;
-}
-
-// ── TelemetrySink ─────────────────────────────────────────────────────────────
-
-export interface SpanHandle {
-  end(attrs?: Record<string, string | number | boolean>): void;
-}
-
-export interface LogEvent {
-  name: string;
-  attrs?: Record<string, string | number | boolean>;
-}
-
-/**
- * Minimal observability surface — spans and structured log events.
- * Implementations: OtelSink, ConsoleSink, NoopSink, …
- */
-export interface TelemetrySink {
-  startSpan(name: string, attrs?: Record<string, string | number | boolean>): SpanHandle;
-  log(event: LogEvent): void;
 }

@@ -67,15 +67,6 @@ CREATE TABLE IF NOT EXISTS provenance (
   at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS stage_runs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ticket_id INTEGER NOT NULL REFERENCES tickets(id),
-  stage_name TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'running',
-  reason TEXT,
-  started_at TEXT NOT NULL,
-  ended_at TEXT
-);
 `;
 
 /** Open (or create) a file-backed SQLite database at the given path. Applies schema DDL idempotently. */

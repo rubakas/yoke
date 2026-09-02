@@ -94,21 +94,3 @@ export const provenance = sqliteTable("provenance", {
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
 });
-
-// ── stage_runs ────────────────────────────────────────────────────────────────
-
-export const stageRuns = sqliteTable("stage_runs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  ticketId: integer("ticket_id")
-    .notNull()
-    .references(() => tickets.id),
-  stageName: text("stage_name").notNull(),
-  status: text("status", { enum: ["running", "passed", "blocked", "failed"] })
-    .notNull()
-    .default("running"),
-  reason: text("reason"),
-  startedAt: text("started_at")
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-  endedAt: text("ended_at"),
-});

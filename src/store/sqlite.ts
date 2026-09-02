@@ -11,7 +11,6 @@ import type {
   WeaknessRow,
   SecurityFindingRow,
   ProvenanceRow,
-  StageRunRow,
   NewTicket,
   NewRequirement,
   NewAcceptanceCriterion,
@@ -154,39 +153,6 @@ export class DrizzleTicketStore implements TicketStore {
   listTickets(): Promise<TicketRow[]> {
     return Promise.resolve(
       this.db.select().from(schema.tickets).orderBy(asc(schema.tickets.id)).all()
-    );
-  }
-
-  startStageRun(ticketId: number, stageName: string): Promise<StageRunRow> {
-    const [row] = this.db
-      .insert(schema.stageRuns)
-      .values({ ticketId, stageName, startedAt: new Date().toISOString() })
-      .returning()
-      .all();
-    return Promise.resolve(row);
-  }
-
-  completeStageRun(
-    runId: number,
-    status: "passed" | "blocked" | "failed",
-    reason?: string
-  ): Promise<void> {
-    this.db
-      .update(schema.stageRuns)
-      .set({ status, reason: reason ?? null, endedAt: new Date().toISOString() })
-      .where(eq(schema.stageRuns.id, runId))
-      .run();
-    return Promise.resolve();
-  }
-
-  listStageRuns(ticketId: number): Promise<StageRunRow[]> {
-    return Promise.resolve(
-      this.db
-        .select()
-        .from(schema.stageRuns)
-        .where(eq(schema.stageRuns.ticketId, ticketId))
-        .orderBy(asc(schema.stageRuns.id))
-        .all()
     );
   }
 }

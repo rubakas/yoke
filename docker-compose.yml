@@ -41,25 +41,6 @@ services:
       - "4317:4317" # OTLP/gRPC
     restart: unless-stopped
 
-  # ── Yoke orchestrator (placeholder — uncomment in Stage 2) ────────────────
-  # orchestrator:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   # The Dockerfile will bundle Node ≥22, Pi CLI, and the `claude` CLI.
-  #   # Pi drives Claude Code as a sub-agent via pi-claude-cli (ADR-0006).
-  #   environment:
-  #     LITELLM_VIRTUAL_KEY: ${LITELLM_VIRTUAL_KEY}
-  #     LITELLM_BASE_URL: http://litellm:4000/v1
-  #     PHOENIX_OTLP_URL: http://phoenix:6006/v1/traces
-  #     YOKE_DB_PATH: /data/yoke.sqlite
-  #   volumes:
-  #     - yoke_data:/data
-  #   depends_on:
-  #     - litellm
-  #     - phoenix
-  #   restart: unless-stopped
-
 volumes:
   postgres_data:
   # yoke_data:
