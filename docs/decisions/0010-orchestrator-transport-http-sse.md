@@ -1,6 +1,8 @@
 # ADR-0010: Orchestrator Transport — Dependency-Free HTTP + SSE
 
-**Status:** Accepted  
+> **Superseded (2026-09-02):** Orchestrator server removed (single-machine decision + chat-first) — see ADR-0011.
+
+**Status:** Superseded by ADR-0011  
 **Date:** 2026-09-01
 
 ## Decision

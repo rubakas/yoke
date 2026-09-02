@@ -1,6 +1,8 @@
 # 0001. Base runtime: Pi
 
-Status: Accepted (2026-09-01)
+> **Superseded (2026-09-02):** Pi never became the runtime; removed in cleanup (commit fef4b34) — see ADR-0011.
+
+Status: Superseded by ADR-0011
 
 ## Context
 

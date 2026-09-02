@@ -1,6 +1,8 @@
 # ADR-0009: MVP Telemetry — JSONL Sink
 
-**Status:** Accepted  
+> **Superseded (2026-09-02):** JSONL sink removed with StageRunner; observability comes from binding runtimes (Claude Code transcripts / Mastra OTel), Phoenix stays a dormant option — see ADR-0011.
+
+**Status:** Superseded by ADR-0011  
 **Date:** 2026-09-01
 
 ## Decision

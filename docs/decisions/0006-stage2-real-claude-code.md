@@ -1,6 +1,8 @@
 # 0006. Stage-2 executor: real Claude Code via pi-claude-cli
 
-Status: Accepted (2026-09-01)
+> **Superseded (2026-09-02):** pi-claude-cli path dropped; local `claude -p` is spawned directly (src/rivet/runClaudeCli.ts) and Binding A uses native subagents — see ADR-0011.
+
+Status: Superseded by ADR-0011
 
 ## Context
 
