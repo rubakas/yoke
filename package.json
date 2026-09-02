@@ -24,7 +24,8 @@
     "doctor": "tsx src/rivet/doctor.ts",
     "bootstrap": "./bootstrap.sh",
     "persist": "tsx src/rivet/persist-cli.ts",
-    "canon:check": "tsx src/canon/validate-cli.ts"
+    "canon:check": "tsx src/canon/validate-cli.ts",
+    "bindings:claude": "tsx src/bindings/write-cli.ts"
   },
   "dependencies": {
     "@ironclad/rivet-node": "1.25.0",

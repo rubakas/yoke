@@ -1,57 +1,21 @@
+import { ASSEMBLE_JS } from "./assembleSource.js";
 import type { Finding, HardenedSpec } from "./types.js";
 
 export type { HardenedSpec } from "./types.js";
 
-function sectionBullets(md: string, heading: string): string[] {
-  const re = new RegExp("^##\\s+" + heading + "\\s*$", "i");
-  const out: string[] = [];
-  let inSection = false;
-  for (const line of md.split("\n")) {
-    if (re.test(line.trim())) {
-      inSection = true;
-      continue;
-    }
-    if (inSection && /^#{1,6}\s/.test(line.trim())) break;
-    if (inSection) {
-      const m = /^\s*(?:[-*]|\d+\.)\s+(.+)$/.exec(line);
-      if (m) out.push(m[1].trim());
-    }
-  }
-  return out;
-}
-
-export function assembleSpec(input: {
+interface AssembleInput {
   request?: string;
   intake: string;
   enrich: string;
   critic: { weaknesses: Finding[] };
   security: { securityFindings: Finding[] };
-}): HardenedSpec {
-  const { intake, enrich, critic, security } = input;
+}
 
-  const lines = intake.split("\n");
-  let title = "";
-  for (const line of lines) {
-    const m = /^#{1,2}\s+(.+)$/.exec(line);
-    if (m) {
-      title = m[1].trim();
-      break;
-    }
-  }
-  if (!title) {
-    title = (lines.find((l) => l.trim()) ?? "Untitled").trim().slice(0, 120);
-  }
+// ASSEMBLE_JS is JS-compatible and runs identically in the TS runtime and
+// in generated Claude Code workflow scripts (single source of truth).
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const _assembleFunc = new Function("input", ASSEMBLE_JS) as (input: AssembleInput) => HardenedSpec;
 
-  const requirements = sectionBullets(intake, "Requirements");
-  const acceptanceCriteria = sectionBullets(intake, "Acceptance Criteria");
-  const description = intake + "\n\n" + enrich;
-
-  return {
-    title,
-    description,
-    requirements,
-    acceptanceCriteria,
-    weaknesses: critic.weaknesses,
-    securityFindings: security.securityFindings,
-  };
+export function assembleSpec(input: AssembleInput): HardenedSpec {
+  return _assembleFunc(input);
 }
