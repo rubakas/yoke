@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { makeFakeSpawn } from "../rivet/testing/fakeSpawn.js";
+import { makeFakeSpawn } from "./testing/fakeSpawn.js";
 import { runLlmStep } from "./runStep.js";
 import type { ModelEntry } from "./registry.js";
 

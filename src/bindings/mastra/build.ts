@@ -17,7 +17,7 @@ import type { StepRunnerDeps } from "../../canon/runStep.js";
 import { canonSchemas } from "../../canon/schemas.js";
 import type { HardenedSpec, LoadedPipeline, StepDef } from "../../canon/types.js";
 import type { TicketStore } from "../../module/seams.js";
-import { persistTicket } from "../../rivet/persistTicket.js";
+import { persistTicket } from "../../canon/persistTicket.js";
 
 // Flexible context record used as input/output schema for all steps.
 const ctx = z.record(z.string(), z.unknown());

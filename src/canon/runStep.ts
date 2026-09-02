@@ -2,10 +2,10 @@
 
 import { spawn as defaultSpawn } from "node:child_process";
 import type { ModelEntry } from "./registry.js";
-import { runClaudeCli } from "../rivet/runClaudeCli.js";
-import type { SpawnFn } from "../rivet/runClaudeCli.js";
+import { runClaudeCli } from "./runClaudeCli.js";
+import type { SpawnFn } from "./runClaudeCli.js";
 
-export type { SpawnFn } from "../rivet/runClaudeCli.js";
+export type { SpawnFn } from "./runClaudeCli.js";
 
 export interface StepRunnerDeps {
   spawn?: SpawnFn;

@@ -1,4 +1,4 @@
-// Shared fake spawn helpers for rivet tests.
+// Shared fake spawn helpers for tests.
 
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";

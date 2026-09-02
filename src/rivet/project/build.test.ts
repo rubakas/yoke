@@ -6,7 +6,7 @@ import { makeInMemoryDb } from "../../db/index.js";
 import { DrizzleTicketStore } from "../../store/sqlite.js";
 import { createRivetHost } from "../host.js";
 import { defaultRegistry, ModelRegistry } from "../registry.js";
-import { makeMultiFakeSpawn } from "../testing/fakeSpawn.js";
+import { makeMultiFakeSpawn } from "../../canon/testing/fakeSpawn.js";
 import { buildSpecCreationProject, STEP_IDS } from "./build.js";
 
 // ── Shared registry for structural tests ─────────────────────────────────────
