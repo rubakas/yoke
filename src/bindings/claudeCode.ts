@@ -37,26 +37,26 @@ function convertPromptTemplate(template: string, inputVars: Set<string>): string
 
 /**
  * Derive workflow phases from step definitions.
- * - Consecutive ungrouped llm steps before the first group → phase "Draft".
- * - Each named group (in first-appearance order) → phase capitalize(group).
+ * - llm steps with no phase, before the first named phase → phase "Draft".
+ * - Each named phase (in first-appearance order) → phase capitalize(phase).
  */
 function computePhases(steps: StepDef[]): { title: string }[] {
   const phases: { title: string }[] = [];
-  const seenGroups = new Set<string>();
-  let hasPreGroupLlm = false;
-  let firstGroupSeen = false;
+  const seenPhases = new Set<string>();
+  let hasPrePhaseLlm = false;
+  let firstPhaseSeen = false;
 
   for (const step of steps) {
     if (step.kind !== "llm") continue;
-    if (!step.group && !firstGroupSeen) hasPreGroupLlm = true;
-    if (step.group) {
-      firstGroupSeen = true;
-      seenGroups.add(step.group);
+    if (!step.phase && !firstPhaseSeen) hasPrePhaseLlm = true;
+    if (step.phase) {
+      firstPhaseSeen = true;
+      seenPhases.add(step.phase);
     }
   }
 
-  if (hasPreGroupLlm) phases.push({ title: "Draft" });
-  for (const g of seenGroups) phases.push({ title: capitalize(g) });
+  if (hasPrePhaseLlm) phases.push({ title: "Draft" });
+  for (const phase of seenPhases) phases.push({ title: capitalize(phase) });
   return phases;
 }
 
@@ -138,13 +138,13 @@ export function generateWorkflowScript(loaded: LoadedPipeline): string {
   }
 
   // ── steps ─────────────────────────────────────────────────────────────────
-  const processedGroups = new Set<string>();
+  const processedPhases = new Set<string>();
   let currentPhase: string | null = null;
   let sequentialLlmCount = 0; // to identify the first sequential step
 
   for (const step of def.steps) {
     if (step.kind === "llm") {
-      const stepPhase = step.group ? capitalize(step.group) : "Draft";
+      const stepPhase = step.phase ? capitalize(step.phase) : "Draft";
 
       if (stepPhase !== currentPhase) {
         currentPhase = stepPhase;
@@ -153,17 +153,17 @@ export function generateWorkflowScript(loaded: LoadedPipeline): string {
         out.push("");
       }
 
-      if (step.group) {
-        if (processedGroups.has(step.group)) continue;
-        processedGroups.add(step.group);
+      if (step.phase) {
+        if (processedPhases.has(step.phase)) continue;
+        processedPhases.add(step.phase);
 
-        const groupSteps = def.steps.filter(
-          (s): s is StepDef => s.kind === "llm" && s.group === step.group
+        const phaseSteps = def.steps.filter(
+          (s): s is StepDef => s.kind === "llm" && s.phase === step.phase
         );
-        const resultVars = groupSteps.map((gs) => `${gs.id}Res`);
+        const resultVars = phaseSteps.map((gs) => `${gs.id}Res`);
 
         out.push(`const [${resultVars.join(", ")}] = await parallel([`);
-        for (const gs of groupSteps) {
+        for (const gs of phaseSteps) {
           const converted = convertPromptTemplate(prompts[gs.id], inputVars);
           const schemaArg = gs.schema
             ? `, schema: ${gs.schema === "weaknesses" ? "WEAK_SCHEMA" : "SEC_SCHEMA"}`
@@ -180,7 +180,7 @@ export function generateWorkflowScript(loaded: LoadedPipeline): string {
         out.push("");
 
         // Null-guard extractions for schema fields
-        for (const gs of groupSteps) {
+        for (const gs of phaseSteps) {
           if (gs.schema) {
             out.push(`const ${gs.schema} = (${gs.id}Res && ${gs.id}Res.${gs.schema}) || []`);
           }
@@ -208,7 +208,7 @@ export function generateWorkflowScript(loaded: LoadedPipeline): string {
       const allLlm = def.steps.filter((s) => s.kind === "llm");
       out.push("const _assembleInput = {");
       for (const s of allLlm) {
-        const varName = s.group ? `${s.id}Res` : `r_${s.id}`;
+        const varName = s.phase ? `${s.id}Res` : `r_${s.id}`;
         out.push(`  ${s.id}: ${varName},`);
       }
       out.push("}");

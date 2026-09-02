@@ -42,7 +42,7 @@ const CANNED_PIPELINE: LoadedPipeline = {
         model: "critic",
         prompt: "prompts/critic.md",
         schema: "weaknesses",
-        group: "critique",
+        phase: "critique",
       },
       {
         id: "security",
@@ -50,7 +50,7 @@ const CANNED_PIPELINE: LoadedPipeline = {
         model: "security",
         prompt: "prompts/security.md",
         schema: "securityFindings",
-        group: "critique",
+        phase: "critique",
       },
       { id: "assemble", kind: "assemble-spec" },
       { id: "approve", kind: "gate", message: "Approve this spec?" },

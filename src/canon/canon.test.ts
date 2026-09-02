@@ -22,7 +22,7 @@ describe("loadPipeline", () => {
       assert.ok(prompts[id].length > 0, `prompts["${id}"] should be non-empty`);
     }
 
-    const critiqueIds = def.steps.filter((s) => s.group === "critique").map((s) => s.id);
+    const critiqueIds = def.steps.filter((s) => s.phase === "critique").map((s) => s.id);
     assert.deepEqual(critiqueIds, ["critic", "security"]);
   });
 

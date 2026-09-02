@@ -17,13 +17,13 @@ steps:
     model: opus
     prompt: prompts/critic.md
     schema: weaknesses
-    group: critique
+    phase: critique
   - id: security
     kind: llm
     model: opus
     prompt: prompts/security.md
     schema: securityFindings
-    group: critique
+    phase: critique
   - id: assemble
     kind: assemble-spec
   - id: approve

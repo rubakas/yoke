@@ -21,7 +21,7 @@ export interface StepDef {
   model?: string;
   prompt?: string;
   schema?: "weaknesses" | "securityFindings";
-  group?: string;
+  phase?: string;
   message?: string;
 }
 

@@ -3,7 +3,7 @@
 // Design: accumulator context pattern.
 //   - All steps share a single Record<string, unknown> input/output schema.
 //   - Each step receives the full accumulated context and returns it extended with its output.
-//   - Parallel group steps each carry the full context forward; a synthetic merge step
+//   - Parallel phase steps each carry the full context forward; a synthetic merge step
 //     combines them back into a single context after the parallel block.
 //   - The workflow input is the pipeline's declared inputs + optional models override map.
 
@@ -125,28 +125,28 @@ function buildLlmStep(step: StepDef, prompts: Record<string, string>, deps: Buil
   });
 }
 
-function buildParallelMergeStep(groupName: string, groupSteps: StepDef[]) {
+function buildParallelMergeStep(phaseName: string, phaseSteps: StepDef[]) {
   // After .parallel([s1, s2]), the next step receives { s1: s1Output, s2: s2Output }.
   // Each parallel step output carries the full accumulated context (accumulator pattern).
   // The merge step folds them back into a single context:
   //   base = first step's full context output
   //   overlay each subsequent step's own key from its output
   const mergeInputShape: Record<string, z.ZodTypeAny> = {};
-  for (const s of groupSteps) {
+  for (const s of phaseSteps) {
     mergeInputShape[s.id] = ctx;
   }
 
   return createStep({
-    id: `__merge_${groupName}`,
+    id: `__merge_${phaseName}`,
     // z.object(mergeInputShape) infers a specific shape; cast to allow dynamic construction.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     inputSchema: z.object(mergeInputShape) as z.ZodObject<any>,
     outputSchema: ctx,
     execute: ({ inputData }) => {
       const mergeInput = inputData as Record<string, Ctx>;
-      const firstId = groupSteps[0].id;
+      const firstId = phaseSteps[0].id;
       const base = { ...(mergeInput[firstId] ?? {}) };
-      for (const s of groupSteps.slice(1)) {
+      for (const s of phaseSteps.slice(1)) {
         base[s.id] = mergeInput[s.id]?.[s.id];
       }
       return Promise.resolve(base);
@@ -228,20 +228,20 @@ export function buildPipelineWorkflow(loaded: LoadedPipeline, deps: BuildDeps): 
     outputSchema: ctx,
   });
 
-  const processedGroups = new Set<string>();
+  const processedPhases = new Set<string>();
 
   for (const step of def.steps) {
     if (step.kind === "llm") {
-      if (step.group) {
-        if (processedGroups.has(step.group)) continue;
-        processedGroups.add(step.group);
+      if (step.phase) {
+        if (processedPhases.has(step.phase)) continue;
+        processedPhases.add(step.phase);
 
-        const groupSteps = def.steps.filter(
-          (s): s is StepDef => s.kind === "llm" && s.group === step.group
+        const phaseSteps = def.steps.filter(
+          (s): s is StepDef => s.kind === "llm" && s.phase === step.phase
         );
-        const mastraSteps = groupSteps.map((s) => buildLlmStep(s, prompts, deps));
+        const mastraSteps = phaseSteps.map((s) => buildLlmStep(s, prompts, deps));
         builder = builder.parallel(mastraSteps);
-        builder = builder.then(buildParallelMergeStep(step.group, groupSteps));
+        builder = builder.then(buildParallelMergeStep(step.phase, phaseSteps));
       } else {
         builder = builder.then(buildLlmStep(step, prompts, deps));
       }

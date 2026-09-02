@@ -54,8 +54,8 @@ export function loadPipeline(
       throw new Error(`Step "${step.id}": unknown schema "${String(step.schema)}"`);
     }
 
-    if (step.group !== undefined && step.kind !== "llm") {
-      throw new Error(`Step "${step.id}": group is only allowed on llm steps`);
+    if (step.phase !== undefined && step.kind !== "llm") {
+      throw new Error(`Step "${step.id}": phase is only allowed on llm steps`);
     }
   }
 
