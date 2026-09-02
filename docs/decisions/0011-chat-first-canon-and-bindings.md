@@ -2,6 +2,8 @@
 
 Status: Accepted (2026-09-02)
 
+> **Amendment (2026-09-03):** The `group` property referenced in Decision 1 was renamed to `phase` by ADR-0012.
+
 ## Context
 
 Rivet spike 011 passed the engine rubric (E1–E8; see specs/011-spike-rivet/evaluation.md) but hands-on operator use reframed the product: the operator surface is CHAT (Claude Code / any MCP client), pipelines/workflows/steps/skills/agents are DATA under CRUD (edited as files in chat), no visual canvas required (viewing may later be a generated diagram; drag-drop authoring deferred).

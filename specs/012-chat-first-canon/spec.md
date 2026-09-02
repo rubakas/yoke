@@ -17,7 +17,7 @@ Provider-portability acceptance criterion: switch T3Code to GPT and the pipeline
 
 | ID     | Requirement                                                                                                                                                                         | Status      |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| FR-001 | Canon loader: `pipelines/*.yaml` + `prompts/*.md` + loader in `src/canon/` (schema kinds: llm \| gate \| assemble-spec \| persist-ticket; parallel via `group`)                     | DONE        |
+| FR-001 | Canon loader: `pipelines/*.yaml` + `prompts/*.md` + loader in `src/canon/` (schema kinds: llm \| gate \| assemble-spec \| persist-ticket; parallel via `phase`)                     | DONE        |
 | FR-002 | Binding A generator: `pnpm bindings:claude` → `.claude/workflows/<id>.js` (generated; drift-guard)                                                                                  | IN PROGRESS |
 | FR-003 | Binding B Mastra interpreter + MCP server (stdio; tools run_<pipeline>, get_run, approve; durable suspend/resume HITL; MASTRA_TELEMETRY_DISABLED; LibSQL separate from yoke.sqlite) | TODO        |
 | FR-004 | Registry-driven step execution: steps execute via open model registry (claude CLI / codex CLI / ollama / litellm)                                                                   | TODO        |
