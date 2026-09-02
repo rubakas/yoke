@@ -33,14 +33,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  # ── Arize Phoenix — observability / tracing (ADR-0005) ────────────────────
-  phoenix:
-    image: arizephoenix/phoenix:latest
-    ports:
-      - "6006:6006" # UI + OTLP/HTTP
-      - "4317:4317" # OTLP/gRPC
-    restart: unless-stopped
-
 volumes:
   postgres_data:
   # yoke_data:
