@@ -14,8 +14,9 @@ export class ModelRegistry {
 
   resolve(id: string): ModelEntry {
     const entry = this.entries.find((e) => e.id === id);
-    if (!entry) throw new Error(`Unknown model: "${id}"`);
-    return entry;
+    if (entry) return entry;
+    // Passthrough: any unknown id is treated as a claude CLI model alias or full name.
+    return { id, transport: "cli", cli: { bin: "claude", model: id } };
   }
 
   list(): ModelEntry[] {
@@ -25,16 +26,10 @@ export class ModelRegistry {
 
 export function defaultRegistry(env: NodeJS.ProcessEnv = process.env): ModelRegistry {
   return new ModelRegistry([
-    {
-      id: "claude-sonnet",
-      transport: "cli",
-      cli: { bin: "claude", model: "sonnet" },
-    },
-    {
-      id: "claude-opus",
-      transport: "cli",
-      cli: { bin: "claude", model: "opus" },
-    },
+    { id: "fable", transport: "cli", cli: { bin: "claude", model: "fable" } },
+    { id: "opus", transport: "cli", cli: { bin: "claude", model: "opus" } },
+    { id: "sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+    { id: "haiku", transport: "cli", cli: { bin: "claude", model: "haiku" } },
     {
       id: "ollama-qwen",
       transport: "api",

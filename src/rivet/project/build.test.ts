@@ -13,7 +13,8 @@ import { buildSpecCreationProject, STEP_IDS } from "./build.js";
 
 function makeRegistry() {
   return new ModelRegistry([
-    { id: "claude-sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+    { id: "sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+    { id: "opus", transport: "cli", cli: { bin: "claude", model: "opus" } },
     {
       id: "ollama-qwen",
       transport: "api",
@@ -51,14 +52,14 @@ describe("buildSpecCreationProject — step node structure", () => {
     assert.equal(Object.values(STEP_IDS).length, 6);
   });
 
-  // ── (b) intake/critic/security are externalCall; enrich is chat (api default) ──
+  // ── (b) all 4 LLM steps are externalCall by default ──────────────────────────
 
-  it("(b) intake/critic/security are externalCall(runClaudeCli); enrich is chat with ollama endpoint", () => {
+  it("(b) intake, enrich, critic, security are all externalCall(runClaudeCli) by default", () => {
     const registry = makeRegistry();
     const project = buildSpecCreationProject({ registry });
     const graph = Object.values(project.graphs)[0];
 
-    for (const id of [STEP_IDS.intake, STEP_IDS.critic, STEP_IDS.security]) {
+    for (const id of [STEP_IDS.intake, STEP_IDS.enrich, STEP_IDS.critic, STEP_IDS.security]) {
       const node = graph.nodes.find((n) => n.id === id);
       assert.ok(node, `Missing node ${id}`);
       assert.equal(node.type, "externalCall", `${id} should be externalCall`);
@@ -69,9 +70,31 @@ describe("buildSpecCreationProject — step node structure", () => {
       );
     }
 
+    // intake and enrich use sonnet; critic and security use opus
+    const intakeModelNode = graph.nodes.find((n) => n.id === "yoke-helper-intake-modelid");
+    assert.ok(intakeModelNode, "intake model text node not found");
+    assert.equal((intakeModelNode.data as Record<string, unknown>).text, "sonnet");
+
+    const criticModelNode = graph.nodes.find((n) => n.id === "yoke-helper-critic-modelid");
+    assert.ok(criticModelNode, "critic model text node not found");
+    assert.equal((criticModelNode.data as Record<string, unknown>).text, "opus");
+
+    const securityModelNode = graph.nodes.find((n) => n.id === "yoke-helper-security-modelid");
+    assert.ok(securityModelNode, "security model text node not found");
+    assert.equal((securityModelNode.data as Record<string, unknown>).text, "opus");
+  });
+
+  // ── (c) enrich switches to chat when model is api (E2 transport-mix) ──────────
+
+  it("(c) models.enrich='ollama-qwen' turns enrich into a chat node with ollama endpoint", () => {
+    const project = buildSpecCreationProject({
+      registry: makeRegistry(),
+      models: { enrich: "ollama-qwen" },
+    });
+    const graph = Object.values(project.graphs)[0];
     const enrichNode = graph.nodes.find((n) => n.id === STEP_IDS.enrich);
     assert.ok(enrichNode, "Missing enrich node");
-    assert.equal(enrichNode.type, "chat", "enrich should be chat node (api transport)");
+    assert.equal(enrichNode.type, "chat", "enrich should be chat node when api model");
     assert.equal(
       (enrichNode.data as Record<string, unknown>).endpoint,
       "http://localhost:11434/v1/chat/completions",
@@ -82,30 +105,6 @@ describe("buildSpecCreationProject — step node structure", () => {
       "qwen2.5:1.5b",
       "enrich overrideModel"
     );
-  });
-
-  it("(b) intake array node feeds the configured model id string", () => {
-    const project = buildSpecCreationProject({ registry: makeRegistry() });
-    const graph = Object.values(project.graphs)[0];
-
-    // Find the model-id text node for intake
-    const modelNode = graph.nodes.find((n) => n.id === "yoke-helper-intake-modelid");
-    assert.ok(modelNode, "intake model text node not found");
-    assert.equal((modelNode.data as Record<string, unknown>).text, "claude-sonnet");
-  });
-
-  // ── (c) enrich switches to externalCall when model is cli ──────────────────────
-
-  it("(c) models.enrich='claude-sonnet' turns enrich into externalCall", () => {
-    const project = buildSpecCreationProject({
-      registry: makeRegistry(),
-      models: { enrich: "claude-sonnet" },
-    });
-    const graph = Object.values(project.graphs)[0];
-    const enrichNode = graph.nodes.find((n) => n.id === STEP_IDS.enrich);
-    assert.ok(enrichNode, "Missing enrich node");
-    assert.equal(enrichNode.type, "externalCall", "enrich should be externalCall when cli model");
-    assert.equal((enrichNode.data as Record<string, unknown>).functionName, "runClaudeCli");
   });
 
   // ── (d) round-trip serialization ──────────────────────────────────────────────
@@ -136,6 +135,44 @@ describe("buildSpecCreationProject — step node structure", () => {
 
   // ── (e) create-ticket is externalCall(persistTicket) ─────────────────────────
 
+  it("(h) critic and security receive the full spec via yoke-helper-join (draft + additions)", () => {
+    const project = buildSpecCreationProject({ registry: makeRegistry() });
+    const graph = Object.values(project.graphs)[0];
+    const conns = graph.connections;
+
+    const joinId = "yoke-helper-join";
+    const joinNode = graph.nodes.find((n) => n.id === joinId);
+    assert.ok(joinNode, "join node not found");
+    assert.equal(joinNode.type, "code", "join node should be a code node");
+
+    // intake → join(draft)
+    const intakeToJoin = conns.find(
+      (c) => c.outputNodeId === STEP_IDS.intake && c.inputNodeId === joinId && c.inputId === "draft"
+    );
+    assert.ok(intakeToJoin, "intake → join(draft) connection missing");
+
+    // enrich → join(additions)
+    const enrichToJoin = conns.find(
+      (c) =>
+        c.outputNodeId === STEP_IDS.enrich && c.inputNodeId === joinId && c.inputId === "additions"
+    );
+    assert.ok(enrichToJoin, "enrich → join(additions) connection missing");
+
+    // join → critic prompt
+    const criticPromptId = "yoke-helper-critic-prompt";
+    const joinToCritic = conns.find(
+      (c) => c.outputNodeId === joinId && c.inputNodeId === criticPromptId
+    );
+    assert.ok(joinToCritic, "join → critic-prompt connection missing");
+
+    // join → security prompt
+    const securityPromptId = "yoke-helper-security-prompt";
+    const joinToSecurity = conns.find(
+      (c) => c.outputNodeId === joinId && c.inputNodeId === securityPromptId
+    );
+    assert.ok(joinToSecurity, "join → security-prompt connection missing");
+  });
+
   it("(e) create-ticket is externalCall with functionName='persistTicket'", () => {
     const project = buildSpecCreationProject({ registry: makeRegistry() });
     const graph = Object.values(project.graphs)[0];
@@ -149,12 +186,17 @@ describe("buildSpecCreationProject — step node structure", () => {
 // ── (f) Headless execution — approved ────────────────────────────────────────
 
 describe("buildSpecCreationProject — headless execution (approved)", () => {
-  it("(f) runs the graph with fakeSpawn and returns ticketId; ticket has weaknesses+securityFindings", async () => {
+  it("(f) runs with fakeSpawn; ticket has correct title, 2 req, 2 AC, additive description", async () => {
+    const intakeDraft =
+      "# Some Title\n\nDescription of the feature.\n\n" +
+      "## Requirements\n- Must respect permissions\n- Must handle large datasets\n\n" +
+      "## Acceptance Criteria\n- AC one\n- AC two";
+
     const cliResponses = [
       // intake
-      "# Add CSV Export\n\nAllow users to export reports as CSV.\n\nRequirements:\n- Must respect permissions",
-      // enrich (switched to cli)
-      "# Add CSV Export\n\nEnriched: Allow users to export reports as CSV while respecting role-based permissions.\n\nRequirements:\n- Must respect permissions\n- Must support large datasets",
+      intakeDraft,
+      // enrich — additive only
+      "## Enrichment additions\n- Must handle concurrent requests\n- Must be WCAG accessible",
       // critic
       '{"weaknesses":[{"text":"No mention of export size limits","severity":"medium","blocking":false}]}',
       // security
@@ -164,12 +206,8 @@ describe("buildSpecCreationProject — headless execution (approved)", () => {
     const { spawn } = makeMultiFakeSpawn(cliResponses);
 
     const registry = new ModelRegistry([
-      { id: "claude-sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
-      {
-        id: "ollama-qwen",
-        transport: "api",
-        api: { endpoint: "http://localhost:11434/v1/chat/completions", model: "qwen2.5:1.5b" },
-      },
+      { id: "sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+      { id: "opus", transport: "cli", cli: { bin: "claude", model: "opus" } },
     ]);
 
     const store = new DrizzleTicketStore(makeInMemoryDb());
@@ -182,11 +220,7 @@ describe("buildSpecCreationProject — headless execution (approved)", () => {
       debuggerPort: false,
     });
 
-    // Build project with enrich switched to cli (no network)
-    const project = buildSpecCreationProject({
-      registry,
-      models: { enrich: "claude-sonnet" },
-    });
+    const project = buildSpecCreationProject({ registry });
 
     const outputs = await host.runProject(project, {
       request: { type: "string", value: "Add a CSV export button" },
@@ -199,9 +233,19 @@ describe("buildSpecCreationProject — headless execution (approved)", () => {
     const ticketId = ticketIdVal.value;
     assert.ok(typeof ticketId === "number" && ticketId > 0, "ticketId should be positive number");
 
-    // Ticket must exist in store with weaknesses and securityFindings
+    // Verify persisted ticket structure
     const full = await store.getFullTicket(ticketId);
     assert.ok(full, "ticket not found in store");
+
+    assert.equal(full.title, "Some Title", "title parsed from intake heading");
+    assert.equal(full.requirements.length, 2, "2 requirements from intake draft");
+    assert.equal(full.acceptanceCriteria.length, 2, "2 acceptance criteria from intake draft");
+
+    // Description must contain both intake draft and enrich additions
+    const body = full.body ?? "";
+    assert.ok(body.includes("# Some Title"), "description contains intake draft");
+    assert.ok(body.includes("## Enrichment additions"), "description contains enrich additions");
+
     assert.ok(full.weaknesses.length > 0, "ticket should have weaknesses");
     assert.ok(full.securityFindings.length > 0, "ticket should have securityFindings");
   });
@@ -212,8 +256,8 @@ describe("buildSpecCreationProject — headless execution (approved)", () => {
 describe("buildSpecCreationProject — headless execution (rejected)", () => {
   it("(g) when answer is 'no', no ticket is created and approved is false", async () => {
     const cliResponses = [
-      "# Spec\n\nSome spec.",
-      "# Spec\n\nEnriched spec.",
+      "# Spec\n\nSome spec.\n\n## Requirements\n- Req one\n\n## Acceptance Criteria\n- AC one",
+      "## Enrichment additions\n- An addition",
       '{"weaknesses":[]}',
       '{"securityFindings":[]}',
     ];
@@ -221,12 +265,8 @@ describe("buildSpecCreationProject — headless execution (rejected)", () => {
     const { spawn } = makeMultiFakeSpawn(cliResponses);
 
     const registry = new ModelRegistry([
-      { id: "claude-sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
-      {
-        id: "ollama-qwen",
-        transport: "api",
-        api: { endpoint: "http://localhost:11434/v1/chat/completions", model: "qwen2.5:1.5b" },
-      },
+      { id: "sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+      { id: "opus", transport: "cli", cli: { bin: "claude", model: "opus" } },
     ]);
 
     const store = new DrizzleTicketStore(makeInMemoryDb());
@@ -245,10 +285,7 @@ describe("buildSpecCreationProject — headless execution (rejected)", () => {
       debuggerPort: false,
     });
 
-    const project = buildSpecCreationProject({
-      registry,
-      models: { enrich: "claude-sonnet" },
-    });
+    const project = buildSpecCreationProject({ registry });
 
     const outputs = await host.runProject(project, {
       request: { type: "string", value: "A feature request" },
@@ -271,7 +308,6 @@ describe("buildSpecCreationProject — headless execution (rejected)", () => {
       `ticketId should be absent/excluded when not approved, got: ${JSON.stringify(ticketIdVal)}`
     );
 
-    // No ticket in store
     assert.ok(askCallCount >= 1, "ask should have been called");
   });
 });

@@ -77,6 +77,27 @@ describe("runClaudeCli", () => {
     });
   });
 
+  it("rejects with model error when stdout contains [claude-code:unrecognized_model]", async () => {
+    const { spawn } = makeFakeSpawn({
+      stdoutChunks: ["[claude-code:unrecognized_model]\nThere's an issue with the selected model"],
+      exitCode: 0,
+    });
+    await assert.rejects(
+      runClaudeCli("hi", { model: "bad-model-name" }, { spawn }),
+      (err: Error) => {
+        assert.ok(
+          err.message.includes("bad-model-name"),
+          `expected model in message: ${err.message}`
+        );
+        assert.ok(
+          err.message.includes("unrecognized_model"),
+          `expected marker in message: ${err.message}`
+        );
+        return true;
+      }
+    );
+  });
+
   it("kills child and rejects with AbortError when signal aborts", async () => {
     const killCalls: string[] = [];
     const emitter = new EventEmitter();
@@ -152,7 +173,7 @@ describe("runClaudeCli", () => {
 
 describe("makeRunClaudeCliFunction", () => {
   const registry = new ModelRegistry([
-    { id: "claude-sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+    { id: "sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
     { id: "api-model", transport: "api", api: { endpoint: "http://localhost:4000/v1" } },
   ]);
 
@@ -163,11 +184,11 @@ describe("makeRunClaudeCliFunction", () => {
   it("calls runClaudeCli and returns string DataValue", async () => {
     const { spawn } = makeFakeSpawn({ stdoutChunks: ["  PONG  "] });
     const fn = makeRunClaudeCliFunction(registry, { spawn });
-    const result = await fn(fakeContext, "say PONG", "claude-sonnet");
+    const result = await fn(fakeContext, "say PONG", "sonnet");
     assert.deepEqual(result, { type: "string", value: "PONG" });
   });
 
-  it("defaults to claude-sonnet when modelId not provided", async () => {
+  it("defaults to sonnet when modelId not provided", async () => {
     const { spawn, capturedArgs } = makeFakeSpawn({ stdoutChunks: ["ok"] });
     const fn = makeRunClaudeCliFunction(registry, { spawn });
     await fn(fakeContext, "hi");

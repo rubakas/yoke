@@ -91,6 +91,16 @@ export function runClaudeCli(
         return;
       }
 
+      // claude exits 0 even for unrecognized models, embedding the error in stdout.
+      if (stdout.includes("[claude-code:unrecognized_model]")) {
+        reject(
+          new Error(
+            `claude CLI rejected model ${JSON.stringify(model ?? "(default)")}: ${stdout.trim().slice(0, 300)}`
+          )
+        );
+        return;
+      }
+
       resolve({ stdout, stderr, exitCode, durationMs });
     });
 
@@ -110,7 +120,7 @@ export function makeRunClaudeCliFunction(
   deps?: { spawn?: SpawnFn; env?: NodeJS.ProcessEnv }
 ): ExternalFunction {
   return async (context, prompt, modelId) => {
-    const mid = (modelId as string | undefined) ?? "claude-sonnet";
+    const mid = (modelId as string | undefined) ?? "sonnet";
     const entry = registry.resolve(mid);
     if (entry.transport !== "cli") {
       throw new Error(`Model "${mid}" has transport "${entry.transport}", expected "cli"`);

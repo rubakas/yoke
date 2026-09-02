@@ -7,7 +7,7 @@ import { ModelRegistry } from "./registry.js";
 
 function makeTestDeps() {
   const registry = new ModelRegistry([
-    { id: "claude-sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+    { id: "sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
     {
       id: "ollama-qwen",
       transport: "api",
@@ -49,7 +49,7 @@ describe("createRivetHost — getChatNodeEndpoint", () => {
   it("passes through configured endpoint for cli-transport model", async () => {
     const deps = makeTestDeps();
     const host = createRivetHost(deps);
-    const info = await host.getChatNodeEndpoint("http://configured", "claude-sonnet");
+    const info = await host.getChatNodeEndpoint("http://configured", "sonnet");
     assert.equal(info.endpoint, "http://configured");
   });
 });
@@ -81,7 +81,7 @@ describe("createRivetHost — onUserInput", () => {
 
   it("io.ask rejection calls callback with empty string (not-approved answer)", async () => {
     const registry = new ModelRegistry([
-      { id: "claude-sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
+      { id: "sonnet", transport: "cli", cli: { bin: "claude", model: "sonnet" } },
     ]);
     const store = new DrizzleTicketStore(makeInMemoryDb());
     const io = {

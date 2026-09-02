@@ -39,32 +39,59 @@ data:
                 } catch (e) { console.error("assemble: JSON parse failed:", e); return null; }
               }
 
+              function parseListUnderHeading(text, headingPat) {
+                const lines = text.split('\n');
+                let inSection = false;
+                const items = [];
+                for (const line of lines) {
+                  const hm = line.match(/^#{1,3}\s+(.+)$/);
+                  if (hm) { inSection = headingPat.test(hm[1].trim()); continue; }
+                  if (inSection) {
+                    const m = line.match(/^(?:\d+[.)\s]|[-*]\s)(.+)/);
+                    if (m) items.push(m[1].trim());
+                  }
+                }
+                return items;
+              }
+
+              const intakeText = String(inputs.intake?.value ?? '');
+
               const enrichText = String(inputs.enrich?.value ?? '');
 
               const criticText = String(inputs.critic?.value ?? '');
 
               const securityText = String(inputs.security?.value ?? '');
 
-              const titleMatch = enrichText.match(/^#+\s+(.+)$/m) ??
-              enrichText.match(/^(.+)$/m);
+              const titleMatch = intakeText.match(/^#{1,2}\s+(.+)$/m);
 
-              const title = titleMatch ? titleMatch[1].trim() : 'Untitled';
+              const title = titleMatch
+                ? titleMatch[1].trim()
+                : (intakeText.split('\n').find(l => l.trim()) ?? 'Untitled').slice(0, 120);
+              const requirements = parseListUnderHeading(intakeText,
+              /^requirements$/i);
+
+              const acceptanceCriteria = parseListUnderHeading(intakeText,
+              /^acceptance criteria$/i);
 
               const criticData = parseJson(criticText);
 
               const secData = parseJson(securityText);
 
+              const description = enrichText ? intakeText + '\n\n' + enrichText
+              : intakeText;
+
               const spec = {
                 title,
-                description: enrichText,
-                requirements: [],
-                acceptanceCriteria: [],
+                description,
+                requirements,
+                acceptanceCriteria,
                 weaknesses: criticData?.weaknesses ?? [],
                 securityFindings: secData?.securityFindings ?? secData?.findings ?? []
               };
 
               return { spec: { type: 'string', value: JSON.stringify(spec) } };
             inputNames:
+              - intake
               - enrich
               - critic
               - security
@@ -85,7 +112,7 @@ data:
         '[yoke-helper-critic-modelid]:text "critic Model"':
           data:
             normalizeLineEndings: true
-            text: claude-sonnet
+            text: opus
           outgoingConnections:
             - output->"critic Args" yoke-helper-critic-args/input2
           visualData: 1400/820/300/null//
@@ -107,21 +134,38 @@ data:
           outgoingConnections:
             - output->"If Approved" yoke-helper-gate-if/value
           visualData: 4750/550/200/null//
+        '[yoke-helper-enrich-args]:array "enrich Args"':
+          data:
+            flatten: true
+            flattenDeep: false
+          outgoingConnections:
+            - output->"enrich" yoke-step-enrich/arguments
+          visualData: 1750/200/200/null//
+        '[yoke-helper-enrich-modelid]:text "enrich Model"':
+          data:
+            normalizeLineEndings: true
+            text: sonnet
+          outgoingConnections:
+            - output->"enrich Args" yoke-helper-enrich-args/input2
+          visualData: 1400/320/300/null//
         '[yoke-helper-enrich-prompt]:text "enrich Prompt"':
           data:
             normalizeLineEndings: true
             text: >-
-              Enrich this spec: add missing edge cases, non-functional
-              requirements, and clarify ambiguities. Keep the # Title heading.
-              Return the improved spec as markdown.
+              You are a product analyst reviewing a spec draft. Return ONLY
+              additional edge cases, non-functional requirements, and
+              clarifications that are missing from the draft. Output a single
+              markdown section titled exactly '## Enrichment additions' followed
+              by bullet points. Do NOT rewrite, repeat, or summarize the
+              original draft.
 
 
-              Spec:
+              Spec draft:
 
               {{spec}}
           outgoingConnections:
-            - output->"enrich" yoke-step-enrich/prompt
-          visualData: 1400/140/300/null//
+            - output->"enrich Args" yoke-helper-enrich-args/input1
+          visualData: 1400/80/300/null//
         '[yoke-helper-gate-if]:if "If Approved"':
           data:
             unconnectedControlFlowExcluded: true
@@ -169,19 +213,69 @@ data:
         '[yoke-helper-intake-modelid]:text "intake Model"':
           data:
             normalizeLineEndings: true
-            text: claude-sonnet
+            text: sonnet
           outgoingConnections:
             - output->"intake Args" yoke-helper-intake-args/input2
           visualData: 350/520/300/null//
         '[yoke-helper-intake-prompt]:text "intake Prompt"':
           data:
             normalizeLineEndings: true
-            text: "You are a product analyst. Produce a concise spec draft with a # Title
-              heading, description, 3-7 requirements, and 3-5 acceptance
-              criteria for: {{request}}"
+            text: >-
+              You are a product analyst. Produce a concise spec draft for:
+              {{request}}
+
+
+              Use exactly this structure (do not add or rename sections):
+
+
+              # <Title>
+
+
+              <one-paragraph description>
+
+
+              ## Requirements
+
+              - <requirement 1>
+
+              - <requirement 2>
+
+              ...
+
+
+              ## Acceptance Criteria
+
+              - <criterion 1>
+
+              - <criterion 2>
+
+              ...
           outgoingConnections:
             - output->"intake Args" yoke-helper-intake-args/input1
           visualData: 350/280/300/null//
+        '[yoke-helper-join]:code "join"':
+          data:
+            allowConsole: false
+            allowFetch: false
+            allowProcess: false
+            allowRequire: false
+            allowRivet: false
+            code: |-
+              const draftText = String(inputs.draft?.value ?? '');
+              const additionsText = String(inputs.additions?.value ?? '');
+              const combined = additionsText
+                ? draftText + '\n\n' + additionsText
+                : draftText;
+              return { spec: { type: 'string', value: combined } };
+            inputNames:
+              - draft
+              - additions
+            outputNames:
+              - spec
+          outgoingConnections:
+            - spec->"critic Prompt" yoke-helper-critic-prompt/spec
+            - spec->"security Prompt" yoke-helper-security-prompt/spec
+          visualData: 2450/700/300/null//
         '[yoke-helper-out-approved]:graphOutput "approved output"':
           data:
             dataType: boolean
@@ -207,7 +301,7 @@ data:
         '[yoke-helper-security-modelid]:text "security Model"':
           data:
             normalizeLineEndings: true
-            text: claude-sonnet
+            text: opus
           outgoingConnections:
             - output->"security Args" yoke-helper-security-args/input2
           visualData: 1400/1320/300/null//
@@ -245,51 +339,24 @@ data:
           outgoingConnections:
             - result->"assemble" yoke-helper-assemble/critic
           visualData: 2100/700/150/null//
-        '[yoke-step-enrich]:chat "enrich"':
+        '[yoke-step-enrich]:externalCall "enrich"':
           data:
-            additionalParameters: []
-            cache: false
-            enableFunctionUse: false
-            endpoint: http://localhost:11434/v1/chat/completions
-            maxTokens: 1024
-            modalitiesIncludeAudio: false
-            modalitiesIncludeText: false
-            model: gpt-4o-mini
-            outputUsage: false
-            overrideModel: qwen2.5:1.5b
-            parallelFunctionCalling: true
-            reasoningEffort: ""
-            stop: ""
-            temperature: 0.5
-            top_p: 1
-            useAdditionalParametersInput: false
-            useAsGraphPartialOutput: true
-            useFrequencyPenaltyInput: false
-            useMaxTokensInput: false
-            useModelInput: false
-            usePredictedOutput: false
-            usePresencePenaltyInput: false
-            useReasoningEffortInput: false
-            useServerTokenCalculation: true
-            useStop: false
-            useStopInput: false
-            useTemperatureInput: false
-            useTopP: false
-            useTopPInput: false
-            useUseTopPInput: false
-            useUserInput: false
+            functionName: runClaudeCli
+            useErrorOutput: false
+            useFunctionNameInput: false
           outgoingConnections:
-            - response->"assemble" yoke-helper-assemble/enrich
-            - response->"critic Prompt" yoke-helper-critic-prompt/spec
-            - response->"security Prompt" yoke-helper-security-prompt/spec
-          visualData: 1750/200/200/null//
+            - result->"assemble" yoke-helper-assemble/enrich
+            - result->"join" yoke-helper-join/additions
+          visualData: 2100/200/150/null//
         '[yoke-step-intake]:externalCall "intake"':
           data:
             functionName: runClaudeCli
             useErrorOutput: false
             useFunctionNameInput: false
           outgoingConnections:
+            - result->"assemble" yoke-helper-assemble/intake
             - result->"enrich Prompt" yoke-helper-enrich-prompt/spec
+            - result->"join" yoke-helper-join/draft
           visualData: 1050/400/150/null//
         '[yoke-step-security]:externalCall "security"':
           data:

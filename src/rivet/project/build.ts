@@ -36,12 +36,18 @@ export const STEP_IDS = {
 // ── Prompt templates ──────────────────────────────────────────────────────────
 
 const INTAKE_PROMPT =
-  "You are a product analyst. Produce a concise spec draft with a # Title heading, description, " +
-  "3-7 requirements, and 3-5 acceptance criteria for: {{request}}";
+  "You are a product analyst. Produce a concise spec draft for: {{request}}\n\n" +
+  "Use exactly this structure (do not add or rename sections):\n\n" +
+  "# <Title>\n\n<one-paragraph description>\n\n" +
+  "## Requirements\n- <requirement 1>\n- <requirement 2>\n...\n\n" +
+  "## Acceptance Criteria\n- <criterion 1>\n- <criterion 2>\n...";
 
 const ENRICH_PROMPT =
-  "Enrich this spec: add missing edge cases, non-functional requirements, and clarify ambiguities. " +
-  "Keep the # Title heading. Return the improved spec as markdown.\n\nSpec:\n{{spec}}";
+  "You are a product analyst reviewing a spec draft. " +
+  "Return ONLY additional edge cases, non-functional requirements, and clarifications " +
+  "that are missing from the draft. " +
+  "Output a single markdown section titled exactly '## Enrichment additions' followed by bullet points. " +
+  "Do NOT rewrite, repeat, or summarize the original draft.\n\nSpec draft:\n{{spec}}";
 
 const CRITIC_PROMPT =
   "You are an adversarial critic. Review this spec for weaknesses — gaps, ambiguities, " +
@@ -196,10 +202,10 @@ function buildStep(
 export function buildSpecCreationProject(opts: BuildOptions): Project {
   const { registry, models = {} } = opts;
 
-  const intakeModelId = models.intake ?? "claude-sonnet";
-  const enrichModelId = models.enrich ?? "ollama-qwen";
-  const criticModelId = models.critic ?? "claude-sonnet";
-  const securityModelId = models.security ?? "claude-sonnet";
+  const intakeModelId = models.intake ?? "sonnet";
+  const enrichModelId = models.enrich ?? "sonnet";
+  const criticModelId = models.critic ?? "opus";
+  const securityModelId = models.security ?? "opus";
 
   const nodes: ChartNode[] = [];
   const connections: NodeConnection[] = [];
@@ -251,6 +257,25 @@ export function buildSpecCreationProject(opts: BuildOptions): Project {
   addStep(enrich);
   addConn(intake.outputNodeId, intake.outputPort, enrich.promptNodeId, "spec");
 
+  // ── Join (intake draft + enrich additions → full spec for critic & security) ──
+  const joinId = "yoke-helper-join";
+  const joinNode = makeNode("code", joinId, 2450, 700);
+  joinNode.title = "join";
+  const joinCode = `
+const draftText = String(inputs.draft?.value ?? '');
+const additionsText = String(inputs.additions?.value ?? '');
+const combined = additionsText
+  ? draftText + '\\n\\n' + additionsText
+  : draftText;
+return { spec: { type: 'string', value: combined } };
+`.trim();
+  (joinNode.data as Record<string, unknown>).code = joinCode;
+  (joinNode.data as Record<string, unknown>).inputNames = ["draft", "additions"];
+  (joinNode.data as Record<string, unknown>).outputNames = ["spec"];
+  add(joinNode);
+  addConn(intake.outputNodeId, intake.outputPort, joinId, "draft");
+  addConn(enrich.outputNodeId, enrich.outputPort, joinId, "additions");
+
   // ── Critic ───────────────────────────────────────────────────────────────────
   const critic = buildStep(
     STEP_IDS.critic,
@@ -263,7 +288,7 @@ export function buildSpecCreationProject(opts: BuildOptions): Project {
     700
   );
   addStep(critic);
-  addConn(enrich.outputNodeId, enrich.outputPort, critic.promptNodeId, "spec");
+  addConn(joinId, "spec", critic.promptNodeId, "spec");
 
   // ── Security ─────────────────────────────────────────────────────────────────
   const security = buildStep(
@@ -277,7 +302,7 @@ export function buildSpecCreationProject(opts: BuildOptions): Project {
     1200
   );
   addStep(security);
-  addConn(enrich.outputNodeId, enrich.outputPort, security.promptNodeId, "spec");
+  addConn(joinId, "spec", security.promptNodeId, "spec");
 
   // ── Assemble (Code node) ──────────────────────────────────────────────────────
   const assembleId = "yoke-helper-assemble";
@@ -291,28 +316,54 @@ function parseJson(s) {
     );
   } catch (e) { console.error("assemble: JSON parse failed:", e); return null; }
 }
+function parseListUnderHeading(text, headingPat) {
+  const lines = text.split('\\n');
+  let inSection = false;
+  const items = [];
+  for (const line of lines) {
+    const hm = line.match(/^#{1,3}\\s+(.+)$/);
+    if (hm) { inSection = headingPat.test(hm[1].trim()); continue; }
+    if (inSection) {
+      const m = line.match(/^(?:\\d+[.)\\s]|[-*]\\s)(.+)/);
+      if (m) items.push(m[1].trim());
+    }
+  }
+  return items;
+}
+const intakeText = String(inputs.intake?.value ?? '');
 const enrichText = String(inputs.enrich?.value ?? '');
 const criticText = String(inputs.critic?.value ?? '');
 const securityText = String(inputs.security?.value ?? '');
-const titleMatch = enrichText.match(/^#+\\s+(.+)$/m) ?? enrichText.match(/^(.+)$/m);
-const title = titleMatch ? titleMatch[1].trim() : 'Untitled';
+const titleMatch = intakeText.match(/^#{1,2}\\s+(.+)$/m);
+const title = titleMatch
+  ? titleMatch[1].trim()
+  : (intakeText.split('\\n').find(l => l.trim()) ?? 'Untitled').slice(0, 120);
+const requirements = parseListUnderHeading(intakeText, /^requirements$/i);
+const acceptanceCriteria = parseListUnderHeading(intakeText, /^acceptance criteria$/i);
 const criticData = parseJson(criticText);
 const secData = parseJson(securityText);
+const description = enrichText ? intakeText + '\\n\\n' + enrichText : intakeText;
 const spec = {
   title,
-  description: enrichText,
-  requirements: [],
-  acceptanceCriteria: [],
+  description,
+  requirements,
+  acceptanceCriteria,
   weaknesses: criticData?.weaknesses ?? [],
   securityFindings: secData?.securityFindings ?? secData?.findings ?? []
 };
 return { spec: { type: 'string', value: JSON.stringify(spec) } };
 `.trim();
   (assembleNode.data as Record<string, unknown>).code = assembleCode;
-  (assembleNode.data as Record<string, unknown>).inputNames = ["enrich", "critic", "security"];
+  (assembleNode.data as Record<string, unknown>).inputNames = [
+    "intake",
+    "enrich",
+    "critic",
+    "security",
+  ];
   (assembleNode.data as Record<string, unknown>).outputNames = ["spec"];
   add(assembleNode);
 
+  addConn(intake.outputNodeId, intake.outputPort, assembleId, "intake");
   addConn(enrich.outputNodeId, enrich.outputPort, assembleId, "enrich");
   addConn(critic.outputNodeId, critic.outputPort, assembleId, "critic");
   addConn(security.outputNodeId, security.outputPort, assembleId, "security");

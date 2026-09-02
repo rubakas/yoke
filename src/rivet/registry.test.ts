@@ -16,9 +16,13 @@ describe("ModelRegistry", () => {
     assert.equal(entry.transport, "cli");
   });
 
-  it("throws on unknown model", () => {
+  it("returns a passthrough cli entry for unknown model id", () => {
     const registry = new ModelRegistry(entries);
-    assert.throws(() => registry.resolve("unknown"), /Unknown model/);
+    const entry = registry.resolve("claude-opus-5");
+    assert.equal(entry.id, "claude-opus-5");
+    assert.equal(entry.transport, "cli");
+    assert.equal(entry.cli?.bin, "claude");
+    assert.equal(entry.cli?.model, "claude-opus-5");
   });
 
   it("list() returns all entries", () => {
@@ -38,16 +42,24 @@ describe("ModelRegistry", () => {
 });
 
 describe("defaultRegistry", () => {
-  it("includes claude-sonnet and claude-opus as cli transport", () => {
+  it("includes fable, opus, sonnet, haiku as cli transport aliases", () => {
     const reg = defaultRegistry({});
-    const sonnet = reg.resolve("claude-sonnet");
-    assert.equal(sonnet.transport, "cli");
-    assert.equal(sonnet.cli?.bin, "claude");
-    assert.equal(sonnet.cli?.model, "sonnet");
 
-    const opus = reg.resolve("claude-opus");
-    assert.equal(opus.transport, "cli");
-    assert.equal(opus.cli?.model, "opus");
+    for (const alias of ["fable", "opus", "sonnet", "haiku"] as const) {
+      const entry = reg.resolve(alias);
+      assert.equal(entry.transport, "cli", `${alias} transport`);
+      assert.equal(entry.cli?.bin, "claude", `${alias} bin`);
+      assert.equal(entry.cli?.model, alias, `${alias} model`);
+    }
+  });
+
+  it("unknown id resolves to passthrough cli entry with model=id", () => {
+    const reg = defaultRegistry({});
+    const entry = reg.resolve("claude-fable-5-1");
+    assert.equal(entry.id, "claude-fable-5-1");
+    assert.equal(entry.transport, "cli");
+    assert.equal(entry.cli?.bin, "claude");
+    assert.equal(entry.cli?.model, "claude-fable-5-1");
   });
 
   it("ollama-qwen uses env.OLLAMA_BASE_URL when set", () => {
