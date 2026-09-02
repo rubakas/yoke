@@ -92,6 +92,25 @@ export default tseslint.config(
     },
   },
 
+  // ── Mastra bindings overrides ─────────────────────────────────────────────
+  // eslint-plugin-import-x@4.17.1 crashes with "node with invalid interface"
+  // when tracing @mastra/core deep subpath exports (e.g. @mastra/core/mastra).
+  // The Mastra workflow/run/tool APIs are dynamically typed (`any`); suppress
+  // the unsafe-* family and require-await for these files only.
+  {
+    files: ["src/bindings/mastra/**"],
+    rules: {
+      "import-x/no-cycle": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
+      "@typescript-eslint/require-await": "off",
+    },
+  },
+
   // ── Prettier LAST — disables all formatting-conflicting rules ────────────
   prettier
 );

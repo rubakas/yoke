@@ -10,7 +10,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "dev": "tsx src/cli.ts",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test 'src/**/*.test.ts'",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "lint": "eslint .",
@@ -25,13 +25,19 @@
     "bootstrap": "./bootstrap.sh",
     "persist": "tsx src/rivet/persist-cli.ts",
     "canon:check": "tsx src/canon/validate-cli.ts",
-    "bindings:claude": "tsx src/bindings/write-cli.ts"
+    "bindings:claude": "tsx src/bindings/write-cli.ts",
+    "mcp": "tsx src/bindings/mastra/server.ts",
+    "mastra:smoke": "tsx src/bindings/mastra/smoke.ts"
   },
   "dependencies": {
     "@ironclad/rivet-node": "1.25.0",
+    "@mastra/core": "1.63.2",
+    "@mastra/libsql": "1.22.2",
+    "@mastra/mcp": "1.17.2",
     "better-sqlite3": "^11.10.0",
     "drizzle-orm": "0.45.2",
-    "yaml": "2.9.0"
+    "yaml": "2.9.0",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

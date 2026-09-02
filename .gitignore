@@ -9,6 +9,7 @@ coverage/
 .DS_Store
 *.sqlite
 *.sqlite-journal
+mastra.db*
 .pi/
 
 # One-time research doc — kept locally, not published (decisions distilled into docs/decisions/)
