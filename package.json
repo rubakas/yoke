@@ -23,12 +23,14 @@
     "rivet:build-project": "tsx src/rivet/project/write-cli.ts",
     "doctor": "tsx src/rivet/doctor.ts",
     "bootstrap": "./bootstrap.sh",
-    "persist": "tsx src/rivet/persist-cli.ts"
+    "persist": "tsx src/rivet/persist-cli.ts",
+    "canon:check": "tsx src/canon/validate-cli.ts"
   },
   "dependencies": {
     "@ironclad/rivet-node": "1.25.0",
     "better-sqlite3": "^11.10.0",
-    "drizzle-orm": "0.45.2"
+    "drizzle-orm": "0.45.2",
+    "yaml": "2.9.0"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

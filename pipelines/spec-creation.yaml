@@ -1,0 +1,33 @@
+id: spec-creation
+version: 1
+description: Harden a feature request into an adversarially reviewed spec
+inputs:
+  - request
+steps:
+  - id: intake
+    kind: llm
+    model: sonnet
+    prompt: prompts/intake.md
+  - id: enrich
+    kind: llm
+    model: sonnet
+    prompt: prompts/enrich.md
+  - id: critic
+    kind: llm
+    model: opus
+    prompt: prompts/critic.md
+    schema: weaknesses
+    group: critique
+  - id: security
+    kind: llm
+    model: opus
+    prompt: prompts/security.md
+    schema: securityFindings
+    group: critique
+  - id: assemble
+    kind: assemble-spec
+  - id: approve
+    kind: gate
+    message: Approve this hardened spec?
+  - id: persist
+    kind: persist-ticket

@@ -1,25 +1,11 @@
 // FR-006: Persist a hardened spec into Yoke's SQLite ticket store.
 
 import { randomUUID } from "node:crypto";
+import type { HardenedSpec } from "../canon/types.js";
 import type { TicketStore } from "../module/seams.js";
 import type { ExternalFunction } from "@ironclad/rivet-node";
 
-export interface HardenedSpec {
-  title: string;
-  description: string;
-  requirements?: string[];
-  acceptanceCriteria?: string[];
-  weaknesses?: {
-    text: string;
-    severity?: "low" | "medium" | "high" | "critical";
-    blocking?: boolean;
-  }[];
-  securityFindings?: {
-    text: string;
-    severity?: "low" | "medium" | "high" | "critical";
-    blocking?: boolean;
-  }[];
-}
+export type { HardenedSpec } from "../canon/types.js";
 
 export async function persistTicket(
   store: TicketStore,
