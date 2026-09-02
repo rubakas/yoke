@@ -1,13 +1,13 @@
 // Stage-1 Ticket Hardening pipeline (FR-002..FR-007, ADR-0002).
 // runHardening drives the full pipeline with all capabilities injected via HardenDeps.
 
-import type { GhIssue } from "../github/ingest.js";
 import type {
   TrackerProvider,
   ModelGateway,
   TicketStore,
   FullTicket,
   Check,
+  TrackerPayload,
 } from "../module/seams.js";
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ export interface HardenInput {
   issueNumber?: number;
   freeText?: string;
   /** Pre-fetched issue data — set by cli.ts when issueNumber is provided. */
-  ghIssue?: GhIssue;
+  ghIssue?: TrackerPayload;
 }
 
 export interface HardenTicketInput {
