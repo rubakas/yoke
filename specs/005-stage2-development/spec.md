@@ -1,5 +1,7 @@
 # Stage-2 Development
 
+> **Superseded (2026-09-03):** Describes the bespoke `DevelopStage` / `StageRunner` / `Executor` pipeline using `pi-claude-cli`, all removed in commit fef4b34. Development is now driven by the canon + bindings layer — see ADR-0011.
+
 | Field        | Value                    |
 | ------------ | ------------------------ |
 | Feature Name | Stage-2 Development      |

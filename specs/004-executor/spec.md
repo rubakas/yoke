@@ -1,5 +1,7 @@
 # Executor (swappable; real Claude Code via pi-claude-cli)
 
+> **Superseded (2026-09-03):** Describes `pi-claude-cli` and the `Executor` seam, both removed in commit fef4b34. Execution is now handled by the canon + bindings layer — see ADR-0011.
+
 | Field        | Value          |
 | ------------ | -------------- |
 | Feature Name | Executor       |
