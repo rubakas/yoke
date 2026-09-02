@@ -22,7 +22,8 @@
     "rivet:host": "tsx src/rivet/main.ts",
     "rivet:build-project": "tsx src/rivet/project/write-cli.ts",
     "doctor": "tsx src/rivet/doctor.ts",
-    "bootstrap": "./bootstrap.sh"
+    "bootstrap": "./bootstrap.sh",
+    "persist": "tsx src/rivet/persist-cli.ts"
   },
   "dependencies": {
     "@ironclad/rivet-node": "1.25.0",
