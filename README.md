@@ -47,10 +47,21 @@ pnpm canon:check              # validate pipeline definitions
 pnpm bindings:claude          # generate Claude Code workflow into .claude/workflows/
 ```
 
-**Start the MCP server:**
+**Start the MCP server (via chat client):**
+
+`.mcp.json` at the repo root wires the server into any MCP-capable client (Claude Code, VS Code with MCP, etc.). Open the repo in your client — it picks up the server automatically.
+
+Manual workflow from the client:
+
+1. Call `list_pipelines` to see available pipelines.
+2. Call `run_pipeline` with `pipeline` and `inputs` to start a run.
+3. If the run returns `status: "awaiting_approval"`, review the spec and call `approve` with the `runId`.
+4. Call `get_run` at any time to check status.
+
+**Switching providers:** edit the `YOKE_PROVIDER` value in `.mcp.json` (`anthropic` → `openai` or `local`) and restart the client. No pipeline or prompt changes needed.
 
 ```sh
-pnpm mcp                      # stdio MCP server for any MCP-capable chat client to connect
+pnpm mcp                      # also launchable standalone (stdio, for testing)
 ```
 
 **Run the pipeline end-to-end (standalone):**
