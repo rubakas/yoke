@@ -6,21 +6,21 @@ inputs:
 steps:
   - id: intake
     kind: llm
-    model: sonnet
+    role: worker
     prompt: prompts/intake.md
   - id: enrich
     kind: llm
-    model: sonnet
+    role: worker
     prompt: prompts/enrich.md
   - id: critic
     kind: llm
-    model: opus
+    role: reasoner
     prompt: prompts/critic.md
     schema: weaknesses
     phase: critique
   - id: security
     kind: llm
-    model: opus
+    role: reasoner
     prompt: prompts/security.md
     schema: securityFindings
     phase: critique

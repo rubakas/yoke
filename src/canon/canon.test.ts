@@ -50,7 +50,7 @@ steps:
     );
   });
 
-  it("throws on llm step without model", () => {
+  it("throws on llm step without model or role", () => {
     const yaml = `
 id: test
 version: 1
@@ -68,6 +68,93 @@ steps:
           readFile: (p) => (p.endsWith(".yaml") ? yaml : "prompt content"),
         }),
       /s1.*model|model.*s1/
+    );
+  });
+
+  it("throws on llm step with both role and model", () => {
+    const yaml = `
+id: test
+version: 1
+description: test
+inputs:
+  - request
+steps:
+  - id: s1
+    kind: llm
+    role: worker
+    model: sonnet
+    prompt: prompts/intake.md
+`;
+    assert.throws(
+      () =>
+        loadPipeline("/fake/pipelines/test.yaml", {
+          readFile: (p) => (p.endsWith(".yaml") ? yaml : "prompt content"),
+        }),
+      /s1.*both role and model|cannot set both/
+    );
+  });
+
+  it("throws on llm step with an unknown role", () => {
+    const yaml = `
+id: test
+version: 1
+description: test
+inputs:
+  - request
+steps:
+  - id: s1
+    kind: llm
+    role: overlord
+    prompt: prompts/intake.md
+`;
+    assert.throws(
+      () =>
+        loadPipeline("/fake/pipelines/test.yaml", {
+          readFile: (p) => (p.endsWith(".yaml") ? yaml : "prompt content"),
+        }),
+      /s1.*overlord|unknown role/
+    );
+  });
+
+  it("accepts llm step with only a role (no model)", () => {
+    const yaml = `
+id: test
+version: 1
+description: test
+inputs:
+  - request
+steps:
+  - id: s1
+    kind: llm
+    role: worker
+    prompt: prompts/intake.md
+`;
+    const { def } = loadPipeline("/fake/pipelines/test.yaml", {
+      readFile: (p) => (p.endsWith(".yaml") ? yaml : "prompt content"),
+    });
+    assert.equal(def.steps[0].role, "worker");
+    assert.equal(def.steps[0].model, undefined);
+  });
+
+  it("throws on role set on a non-llm step", () => {
+    const yaml = `
+id: test
+version: 1
+description: test
+inputs:
+  - request
+steps:
+  - id: g1
+    kind: gate
+    role: worker
+    message: ok?
+`;
+    assert.throws(
+      () =>
+        loadPipeline("/fake/pipelines/test.yaml", {
+          readFile: (p) => (p.endsWith(".yaml") ? yaml : ""),
+        }),
+      /g1.*role.*llm|role.*only.*llm/
     );
   });
 

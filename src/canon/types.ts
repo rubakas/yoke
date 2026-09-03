@@ -15,9 +15,12 @@ export interface HardenedSpec {
 
 export type StepKind = "llm" | "gate" | "assemble-spec" | "persist-ticket";
 
+export type Role = "reasoner" | "worker" | "scout";
+
 export interface StepDef {
   id: string;
   kind: StepKind;
+  role?: Role;
   model?: string;
   prompt?: string;
   schema?: "weaknesses" | "securityFindings";

@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { defaultRegistry, ModelRegistry } from "./registry.js";
+import {
+  defaultRegistry,
+  getActiveProfile,
+  getProfile,
+  ModelRegistry,
+  resolveStepModel,
+} from "./registry.js";
 import type { ModelEntry } from "./registry.js";
+import type { StepDef } from "./types.js";
 
 describe("ModelRegistry", () => {
   const entries: ModelEntry[] = [
@@ -104,5 +111,123 @@ describe("defaultRegistry", () => {
     const reg = defaultRegistry({ LITELLM_MODEL: "my-model" });
     const entry = reg.resolve("litellm");
     assert.equal(entry.api?.model, "my-model");
+  });
+
+  it("codex resolves with cli bin=codex and no model field", () => {
+    const reg = defaultRegistry({});
+    const entry = reg.resolve("codex");
+    assert.equal(entry.transport, "cli");
+    assert.equal(entry.cli?.bin, "codex");
+    assert.equal(entry.cli?.model, undefined);
+  });
+});
+
+describe("getProfile", () => {
+  it("anthropic profile has correct role→model mappings", () => {
+    const p = getProfile("anthropic");
+    assert.equal(p.roles.reasoner, "opus");
+    assert.equal(p.roles.worker, "sonnet");
+    assert.equal(p.roles.scout, "haiku");
+  });
+
+  it("openai profile maps all roles to codex", () => {
+    const p = getProfile("openai");
+    assert.equal(p.roles.reasoner, "codex");
+    assert.equal(p.roles.worker, "codex");
+    assert.equal(p.roles.scout, "codex");
+  });
+
+  it("local profile maps all roles to ollama-qwen", () => {
+    const p = getProfile("local");
+    assert.equal(p.roles.reasoner, "ollama-qwen");
+    assert.equal(p.roles.worker, "ollama-qwen");
+    assert.equal(p.roles.scout, "ollama-qwen");
+  });
+
+  it("throws on unknown profile id naming available ids", () => {
+    assert.throws(
+      () => getProfile("unknown-provider"),
+      (err: Error) => {
+        assert.ok(err.message.includes("unknown-provider"), "error should name the bad id");
+        assert.ok(err.message.includes("anthropic"), "error should list anthropic");
+        assert.ok(err.message.includes("openai"), "error should list openai");
+        assert.ok(err.message.includes("local"), "error should list local");
+        return true;
+      }
+    );
+  });
+});
+
+describe("getActiveProfile", () => {
+  it("defaults to anthropic when YOKE_PROVIDER not set", () => {
+    const p = getActiveProfile({});
+    assert.equal(p.id, "anthropic");
+  });
+
+  it("selects the profile named by YOKE_PROVIDER", () => {
+    const p = getActiveProfile({ YOKE_PROVIDER: "openai" });
+    assert.equal(p.id, "openai");
+  });
+
+  it("throws on unknown YOKE_PROVIDER value", () => {
+    assert.throws(() => getActiveProfile({ YOKE_PROVIDER: "bad-provider" }), /bad-provider/);
+  });
+});
+
+describe("resolveStepModel", () => {
+  const reg = defaultRegistry({});
+  const anthropic = getProfile("anthropic");
+  const openai = getProfile("openai");
+  const local = getProfile("local");
+
+  function step(overrides: Partial<StepDef>): StepDef {
+    return { id: "s", kind: "llm", ...overrides };
+  }
+
+  it("role=reasoner on anthropic resolves to opus entry", () => {
+    const entry = resolveStepModel(step({ role: "reasoner" }), anthropic, reg);
+    assert.equal(entry.id, "opus");
+    assert.equal(entry.cli?.model, "opus");
+  });
+
+  it("role=worker on anthropic resolves to sonnet entry", () => {
+    const entry = resolveStepModel(step({ role: "worker" }), anthropic, reg);
+    assert.equal(entry.id, "sonnet");
+    assert.equal(entry.cli?.model, "sonnet");
+  });
+
+  it("role=scout on anthropic resolves to haiku entry", () => {
+    const entry = resolveStepModel(step({ role: "scout" }), anthropic, reg);
+    assert.equal(entry.id, "haiku");
+    assert.equal(entry.cli?.model, "haiku");
+  });
+
+  it("all roles on openai resolve to codex entry with no model field", () => {
+    for (const role of ["reasoner", "worker", "scout"] as const) {
+      const entry = resolveStepModel(step({ role }), openai, reg);
+      assert.equal(entry.id, "codex", `${role} should resolve to codex`);
+      assert.equal(entry.cli?.bin, "codex");
+      assert.equal(entry.cli?.model, undefined, "codex entry should have no model field");
+    }
+  });
+
+  it("all roles on local resolve to ollama-qwen entry", () => {
+    for (const role of ["reasoner", "worker", "scout"] as const) {
+      const entry = resolveStepModel(step({ role }), local, reg);
+      assert.equal(entry.id, "ollama-qwen", `${role} should resolve to ollama-qwen`);
+    }
+  });
+
+  it("explicit model overrides role — model wins", () => {
+    const entry = resolveStepModel(step({ model: "haiku" }), openai, reg);
+    assert.equal(entry.id, "haiku");
+    assert.equal(entry.cli?.bin, "claude");
+  });
+
+  it("explicit model passthrough for unknown id still works", () => {
+    const entry = resolveStepModel(step({ model: "claude-opus-5" }), anthropic, reg);
+    assert.equal(entry.id, "claude-opus-5");
+    assert.equal(entry.cli?.bin, "claude");
+    assert.equal(entry.cli?.model, "claude-opus-5");
   });
 });

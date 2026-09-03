@@ -9,7 +9,7 @@ import { Mastra } from "@mastra/core/mastra";
 import { LibSQLStore } from "@mastra/libsql";
 import { makeDb } from "../../db/index.js";
 import { listPipelines, loadPipeline } from "../../canon/load.js";
-import { defaultRegistry } from "../../canon/registry.js";
+import { defaultRegistry, getProfile } from "../../canon/registry.js";
 import { DrizzleTicketStore } from "../../store/sqlite.js";
 import { buildPipelineWorkflow } from "./build.js";
 
@@ -25,12 +25,16 @@ function getFlag(flag: string, fallback: string): string {
 const dbPath = getFlag("--db", "/tmp/yoke-mastra-smoke.sqlite");
 const mastraDbPath = dbPath.replace(/\.sqlite$/, "-mastra.db");
 const intakeModel = getFlag("--intake-model", "haiku");
+const providerId = getFlag("--provider", process.env.YOKE_PROVIDER ?? "anthropic");
+const profile = getProfile(providerId);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = join(__dirname, "..", "..", "..");
 
-console.log(`Smoke: dbPath=${dbPath} mastraDbPath=${mastraDbPath} intakeModel=${intakeModel}`);
+console.log(
+  `Smoke: dbPath=${dbPath} mastraDbPath=${mastraDbPath} intakeModel=${intakeModel} provider=${providerId}`
+);
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -48,7 +52,7 @@ if (!pipelineFile) {
 
 const loaded = loadPipeline(pipelineFile);
 
-const wf = buildPipelineWorkflow(loaded, { registry, store });
+const wf = buildPipelineWorkflow(loaded, { registry, store, profile });
 const mastra = new Mastra({ storage: mastraStorage, workflows: { [loaded.def.id]: wf } });
 const mastraWf = mastra.getWorkflow(loaded.def.id);
 

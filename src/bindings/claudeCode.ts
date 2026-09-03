@@ -1,4 +1,10 @@
 import { ASSEMBLE_JS } from "../canon/assembleSource.js";
+import {
+  defaultRegistry,
+  getActiveProfile,
+  resolveStepModel,
+  type ProviderProfile,
+} from "../canon/registry.js";
 import { canonSchemas } from "../canon/schemas.js";
 import type { LoadedPipeline, StepDef } from "../canon/types.js";
 
@@ -64,7 +70,11 @@ function computePhases(steps: StepDef[]): { title: string }[] {
 // Main export
 // ---------------------------------------------------------------------------
 
-export function generateWorkflowScript(loaded: LoadedPipeline): string {
+export function generateWorkflowScript(loaded: LoadedPipeline, profile?: ProviderProfile): string {
+  // Profile is resolved at generation time and baked into the script — correct for
+  // Binding A which always runs under Claude Code with the active provider profile.
+  const resolvedProfile = profile ?? getActiveProfile();
+  const registry = defaultRegistry();
   const { def, prompts } = loaded;
   const inputVars = new Set<string>(def.inputs);
   const phases = computePhases(def.steps);
@@ -97,7 +107,9 @@ export function generateWorkflowScript(loaded: LoadedPipeline): string {
 
   // ── model variable per llm step ───────────────────────────────────────────
   for (const step of llmSteps) {
-    out.push(`const ${modelVar(step.id)} = models.${step.id} || '${step.model}'`);
+    const entry = resolveStepModel(step, resolvedProfile, registry);
+    const concreteModel = entry.cli?.model ?? entry.api?.model ?? entry.id;
+    out.push(`const ${modelVar(step.id)} = models.${step.id} || '${concreteModel}'`);
   }
   out.push("");
 

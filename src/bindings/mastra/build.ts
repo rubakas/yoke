@@ -10,7 +10,8 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import { assembleSpec } from "../../canon/assemble.js";
-import type { ModelRegistry } from "../../canon/registry.js";
+import type { ModelRegistry, ProviderProfile } from "../../canon/registry.js";
+import { getActiveProfile, resolveStepModel } from "../../canon/registry.js";
 import { renderPrompt } from "../../canon/render.js";
 import { runLlmStep } from "../../canon/runStep.js";
 import type { StepRunnerDeps } from "../../canon/runStep.js";
@@ -26,6 +27,7 @@ type Ctx = Record<string, unknown>;
 export interface BuildDeps {
   registry: ModelRegistry;
   store: TicketStore;
+  profile?: ProviderProfile;
   runner?: typeof runLlmStep;
   runnerDeps?: StepRunnerDeps;
 }
@@ -37,9 +39,9 @@ function stripFences(text: string): string {
     .trim();
 }
 
-function resolveModel(stepId: string, defaultModel: string, ctxData: Ctx): string {
+function ctxModelOverride(stepId: string, ctxData: Ctx): string | undefined {
   const models = ctxData.models as Record<string, string> | undefined;
-  return models?.[stepId] ?? defaultModel;
+  return models?.[stepId];
 }
 
 function ctxVars(ctxData: Ctx): Record<string, string> {
@@ -78,14 +80,17 @@ function tryParseSchemaOutput(
 
 function buildLlmStep(step: StepDef, prompts: Record<string, string>, deps: BuildDeps) {
   const runner = deps.runner ?? runLlmStep;
+  const profile = deps.profile ?? getActiveProfile();
   return createStep({
     id: step.id,
     inputSchema: ctx,
     outputSchema: ctx,
     execute: async ({ inputData }) => {
       const ctxData = inputData as Ctx;
-      const modelId = resolveModel(step.id, step.model!, ctxData);
-      const entry = deps.registry.resolve(modelId);
+      const override = ctxModelOverride(step.id, ctxData);
+      const entry = override
+        ? deps.registry.resolve(override)
+        : resolveStepModel(step, profile, deps.registry);
       let prompt = renderPrompt(prompts[step.id], ctxVars(ctxData));
 
       // For schema-gated steps: append a strict JSON format instruction so the

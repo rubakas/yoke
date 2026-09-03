@@ -2,7 +2,9 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { parse } from "yaml";
 import { canonSchemas } from "./schemas.js";
-import type { LoadedPipeline, PipelineDef } from "./types.js";
+import type { LoadedPipeline, PipelineDef, Role } from "./types.js";
+
+const VALID_ROLES: Role[] = ["reasoner", "worker", "scout"];
 
 export function loadPipeline(
   yamlPath: string,
@@ -36,8 +38,14 @@ export function loadPipeline(
     }
 
     if (step.kind === "llm") {
-      if (!step.model) {
-        throw new Error(`Step "${step.id}": llm step requires model`);
+      if (!step.role && !step.model) {
+        throw new Error(`Step "${step.id}": llm step requires role or model`);
+      }
+      if (step.role && step.model) {
+        throw new Error(`Step "${step.id}": step cannot set both role and model`);
+      }
+      if (step.role && !VALID_ROLES.includes(step.role)) {
+        throw new Error(`Step "${step.id}": unknown role "${step.role}"`);
       }
       if (!step.prompt) {
         throw new Error(`Step "${step.id}": llm step requires prompt`);
@@ -56,6 +64,10 @@ export function loadPipeline(
 
     if (step.phase !== undefined && step.kind !== "llm") {
       throw new Error(`Step "${step.id}": phase is only allowed on llm steps`);
+    }
+
+    if (step.role !== undefined && step.kind !== "llm") {
+      throw new Error(`Step "${step.id}": role is only allowed on llm steps`);
     }
   }
 
