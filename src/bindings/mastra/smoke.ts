@@ -13,7 +13,7 @@ import { defaultRegistry, getProfile, resolveStepModel } from "../../canon/regis
 import type { ModelEntry } from "../../canon/registry.js";
 import type { StepDef } from "../../canon/types.js";
 import { DrizzleTicketStore } from "../../store/sqlite.js";
-import { buildPipelineWorkflow } from "./build.js";
+import { buildPipelineWorkflow, mastraDbPath } from "./build.js";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ function hasFlag(flag: string): boolean {
 }
 
 const dbPath = getFlag("--db", "/tmp/yoke-mastra-smoke.sqlite");
-const mastraDbPath = dbPath.replace(/\.sqlite$/, "-mastra.db");
+const mastraDb = mastraDbPath(dbPath);
 const providerId = getFlag("--provider", process.env.YOKE_PROVIDER ?? "anthropic");
 const profile = getProfile(providerId);
 
@@ -52,7 +52,7 @@ console.log(`Smoke: provider=${providerId} db=${dbPath}`);
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
-const mastraStorage = new LibSQLStore({ id: "yoke-smoke", url: `file:${mastraDbPath}` });
+const mastraStorage = new LibSQLStore({ id: "yoke-smoke", url: `file:${mastraDb}` });
 const yokeDb = makeDb(dbPath);
 const store = new DrizzleTicketStore(yokeDb);
 const registry = defaultRegistry();

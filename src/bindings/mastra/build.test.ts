@@ -21,7 +21,7 @@ import { ModelRegistry } from "../../canon/registry.js";
 import type { runLlmStep } from "../../canon/runStep.js";
 import type { LoadedPipeline } from "../../canon/types.js";
 import { DrizzleTicketStore } from "../../store/sqlite.js";
-import { buildPipelineWorkflow } from "./build.js";
+import { buildPipelineWorkflow, mastraDbPath } from "./build.js";
 
 // ── Test pipeline fixture ─────────────────────────────────────────────────────
 
@@ -348,5 +348,23 @@ describe("buildPipelineWorkflow — JSON retry", () => {
     } finally {
       cleanup();
     }
+  });
+});
+
+describe("mastraDbPath", () => {
+  it("strips .sqlite and appends -mastra.db", () => {
+    assert.equal(mastraDbPath("/tmp/yoke.sqlite"), "/tmp/yoke-mastra.db");
+  });
+
+  it("strips .db and appends -mastra.db", () => {
+    assert.equal(mastraDbPath("/tmp/yoke.db"), "/tmp/yoke-mastra.db");
+  });
+
+  it("appends -mastra.db when no recognised extension", () => {
+    assert.equal(mastraDbPath("/tmp/yoke"), "/tmp/yoke-mastra.db");
+  });
+
+  it("does not strip a .db component in a directory name", () => {
+    assert.equal(mastraDbPath("/some/path/db.dir/yoke"), "/some/path/db.dir/yoke-mastra.db");
   });
 });

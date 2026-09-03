@@ -14,7 +14,7 @@ import { makeDb } from "../../db/index.js";
 import { listPipelines, loadPipeline } from "../../canon/load.js";
 import { defaultRegistry } from "../../canon/registry.js";
 import { DrizzleTicketStore } from "../../store/sqlite.js";
-import { buildPipelineWorkflow } from "./build.js";
+import { buildPipelineWorkflow, mastraDbPath } from "./build.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,13 +28,13 @@ const ticketDbPath =
     ? process.argv[dbFlagIdx + 1]
     : join(repoRoot, "yoke.sqlite");
 
-const mastraDbPath = ticketDbPath.replace(/\.sqlite$/, "-mastra.db").replace(/\.db$/, "-mastra.db");
+const mastraDb = mastraDbPath(ticketDbPath);
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
 const mastraStorage = new LibSQLStore({
   id: "yoke-mastra",
-  url: `file:${mastraDbPath}`,
+  url: `file:${mastraDb}`,
 });
 
 const yokeDb = makeDb(ticketDbPath);

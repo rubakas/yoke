@@ -20,6 +20,19 @@ import type { HardenedSpec, LoadedPipeline, StepDef } from "../../canon/types.js
 import type { TicketStore } from "../../module/seams.js";
 import { persistTicket } from "../../canon/persistTicket.js";
 
+// ── Path helpers ──────────────────────────────────────────────────────────────
+
+/** Derive the Mastra LibSQL db path from the ticket db path.
+ *
+ * Strips a trailing `.sqlite` or `.db` extension (anchored at end, so
+ * directory components containing `.db` are unaffected) then appends
+ * `-mastra.db`. Paths with no recognised extension get the suffix appended
+ * directly.
+ */
+export function mastraDbPath(ticketDbPath: string): string {
+  return ticketDbPath.replace(/\.(sqlite|db)$/, "") + "-mastra.db";
+}
+
 // Flexible context record used as input/output schema for all steps.
 const ctx = z.record(z.string(), z.unknown());
 type Ctx = Record<string, unknown>;
