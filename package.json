@@ -19,7 +19,7 @@
     "rivet:e1": "tsx src/rivet/e1.ts",
     "rivet:host": "tsx src/rivet/main.ts",
     "rivet:build-project": "tsx src/rivet/project/write-cli.ts",
-    "doctor": "tsx src/rivet/doctor.ts",
+    "doctor": "tsx src/doctor.ts",
     "bootstrap": "./bootstrap.sh",
     "persist": "tsx src/rivet/persist-cli.ts",
     "canon:check": "tsx src/canon/validate-cli.ts",

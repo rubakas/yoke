@@ -39,6 +39,8 @@ function makeOkProbes(overrides: Partial<DoctorProbes> = {}): DoctorProbes {
       throw new Error(`unexpected URL: ${url}`);
     },
     requireNative: () => true,
+    reachable: async (_url) => true,
+    loadCanon: () => ({ loaded: ["spec-creation"], failed: [] }),
     env: {},
     ...overrides,
   };
@@ -155,12 +157,18 @@ describe("runDoctor", () => {
     assert.equal(warn, undefined, "unexpected shadow warn");
   });
 
-  it("Rivet missing → fail with brew hint", async () => {
+  it("Rivet missing → warn only (optional), not fail", async () => {
     const results = await runDoctor(makeOkProbes({ exists: () => false }));
-    const check = results.find((r) => r.name === "Rivet.app");
-    assert.ok(check, "Rivet.app check missing");
-    assert.equal(check.status, "fail");
+    const check = results.find((r) => r.name === "Rivet.app (optional)");
+    assert.ok(check, "Rivet.app (optional) check missing");
+    assert.equal(check.status, "warn");
     assert.ok(check.hint?.includes("brew"), `hint: ${check.hint}`);
+  });
+
+  it("Rivet missing → no fail in results (it is OPTIONAL)", async () => {
+    const results = await runDoctor(makeOkProbes({ exists: () => false }));
+    const fails = results.filter((r) => r.status === "fail");
+    assert.deepEqual(fails, [], `unexpected failures when Rivet absent: ${JSON.stringify(fails)}`);
   });
 
   it("ollama down → warn only, no fail", async () => {
@@ -205,6 +213,127 @@ describe("runDoctor", () => {
     assert.ok(check);
     assert.equal(check.status, "fail");
     assert.ok(check.hint?.includes("pnpm rebuild better-sqlite3"));
+  });
+
+  // ── Active provider + profile transport checks ────────────────────────────
+
+  it("active provider is reported (default anthropic)", async () => {
+    const results = await runDoctor(makeOkProbes());
+    const check = results.find((r) => r.name === "Active provider");
+    assert.ok(check, "Active provider check missing");
+    assert.equal(check.status, "ok");
+    assert.ok(check.detail.includes("anthropic"), `detail: ${check.detail}`);
+    assert.ok(check.detail.includes("reasoner=opus"), `detail: ${check.detail}`);
+  });
+
+  it("anthropic profile: claude CLI present → transport ok", async () => {
+    const results = await runDoctor(makeOkProbes());
+    const check = results.find((r) => r.name === "anthropic: claude CLI transport");
+    assert.ok(check, "anthropic transport check missing");
+    assert.equal(check.status, "ok");
+  });
+
+  it("anthropic profile: claude CLI missing → transport fail", async () => {
+    const results = await runDoctor(
+      makeOkProbes({
+        which: (bin) => (bin === "claude" ? undefined : `/usr/bin/${bin}`),
+        whichAll: (bin) => (bin === "claude" ? [] : [`/usr/bin/${bin}`]),
+      })
+    );
+    const check = results.find((r) => r.name === "anthropic: claude CLI transport");
+    assert.ok(check, "anthropic transport check missing");
+    assert.equal(check.status, "fail");
+  });
+
+  it("openai profile: codex CLI present → transport ok", async () => {
+    const results = await runDoctor(makeOkProbes({ env: { YOKE_PROVIDER: "openai" } }));
+    const check = results.find((r) => r.name === "openai: codex CLI transport");
+    assert.ok(check, "openai transport check missing");
+    assert.equal(check.status, "ok");
+  });
+
+  it("openai profile: codex CLI missing → transport fail", async () => {
+    const results = await runDoctor(
+      makeOkProbes({
+        env: { YOKE_PROVIDER: "openai" },
+        which: (bin) => (bin === "codex" ? undefined : `/usr/bin/${bin}`),
+      })
+    );
+    const check = results.find((r) => r.name === "openai: codex CLI transport");
+    assert.ok(check, "openai transport check missing");
+    assert.equal(check.status, "fail");
+    assert.ok(check.detail.includes("codex not found"), `detail: ${check.detail}`);
+  });
+
+  it("local profile: api transport reachable → ok", async () => {
+    const results = await runDoctor(
+      makeOkProbes({
+        env: { YOKE_PROVIDER: "local" },
+        reachable: async (_url) => true,
+      })
+    );
+    const check = results.find((r) => r.name === "local: api transport");
+    assert.ok(check, "local api transport check missing");
+    assert.equal(check.status, "ok");
+  });
+
+  it("local profile: api transport unreachable → fail", async () => {
+    const results = await runDoctor(
+      makeOkProbes({
+        env: { YOKE_PROVIDER: "local" },
+        reachable: async (_url) => false,
+      })
+    );
+    const check = results.find((r) => r.name === "local: api transport");
+    assert.ok(check, "local api transport check missing");
+    assert.equal(check.status, "fail");
+    assert.ok(check.detail.includes("unreachable"), `detail: ${check.detail}`);
+  });
+
+  it("invalid YOKE_PROVIDER → active provider fails", async () => {
+    const results = await runDoctor(makeOkProbes({ env: { YOKE_PROVIDER: "invalid-provider" } }));
+    const check = results.find((r) => r.name === "Active provider");
+    assert.ok(check, "Active provider check missing");
+    assert.equal(check.status, "fail");
+  });
+
+  // ── Canon checks ──────────────────────────────────────────────────────────
+
+  it("canon loads ok → ok check", async () => {
+    const results = await runDoctor(
+      makeOkProbes({
+        loadCanon: () => ({ loaded: ["spec-creation", "develop"], failed: [] }),
+      })
+    );
+    const check = results.find((r) => r.name === "Canon (pipelines)");
+    assert.ok(check, "Canon check missing");
+    assert.equal(check.status, "ok");
+    assert.ok(check.detail.includes("2 pipeline"), `detail: ${check.detail}`);
+    assert.ok(check.detail.includes("spec-creation"), `detail: ${check.detail}`);
+  });
+
+  it("canon load fails → fail check", async () => {
+    const results = await runDoctor(
+      makeOkProbes({
+        loadCanon: () => ({
+          loaded: [],
+          failed: [{ file: "pipelines/broken.yaml", error: "Duplicate step id" }],
+        }),
+      })
+    );
+    const check = results.find((r) => r.name === "Canon (pipelines)");
+    assert.ok(check, "Canon check missing");
+    assert.equal(check.status, "fail");
+    assert.ok(check.detail.includes("Duplicate step id"), `detail: ${check.detail}`);
+  });
+
+  it("canon no pipelines found → warn", async () => {
+    const results = await runDoctor(
+      makeOkProbes({ loadCanon: () => ({ loaded: [], failed: [] }) })
+    );
+    const check = results.find((r) => r.name === "Canon (pipelines)");
+    assert.ok(check, "Canon check missing");
+    assert.equal(check.status, "warn");
   });
 });
 

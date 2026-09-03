@@ -1,14 +1,19 @@
 // FR-008: preflight doctor — checks external prerequisites and reports issues.
+// FR-006: covers prerequisites for both Binding A (claude CLI) and Binding B (codex/ollama).
 
 import { execFile, execFileSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { listPipelines, loadPipeline } from "./canon/load.js";
+import { defaultRegistry, getActiveProfile } from "./canon/registry.js";
 
 const execFileAsync = promisify(execFile);
 const _require = createRequire(import.meta.url);
+const _doctorDir = dirname(fileURLToPath(import.meta.url));
+const _repoRoot = join(_doctorDir, "..");
 
 export type CheckStatus = "ok" | "warn" | "fail";
 
@@ -29,6 +34,10 @@ export interface DoctorProbes {
   fetchJson: (url: string) => Promise<unknown>;
   /** Tries to load better-sqlite3 for the active Node ABI; returns true if ok. */
   requireNative: () => boolean;
+  /** Returns true if an HTTP server responds at baseUrl (any status code counts). */
+  reachable: (baseUrl: string) => Promise<boolean>;
+  /** Loads every pipeline in the pipelines/ directory; returns ids and any errors. */
+  loadCanon: () => { loaded: string[]; failed: { file: string; error: string }[] };
   env: NodeJS.ProcessEnv;
 }
 
@@ -80,40 +89,93 @@ export async function runDoctor(probes: DoctorProbes): Promise<CheckResult[]> {
     }
   }
 
-  // 4. Rivet desktop app (required)
+  // 4. Active provider + profile role transport prerequisites (required)
   {
-    const systemPath = "/Applications/Rivet.app";
-    const home = probes.env.HOME ?? "";
-    const userPath = `${home}/Applications/Rivet.app`;
-    const rivetPath = probes.exists(systemPath)
-      ? systemPath
-      : probes.exists(userPath)
-        ? userPath
-        : null;
+    let profileOk = false;
+    let profileId = "unknown";
+    try {
+      const profile = getActiveProfile(probes.env);
+      const registry = defaultRegistry(probes.env);
+      profileId = profile.id;
 
-    if (rivetPath) {
-      const ver = await probes.exec("defaults", [
-        "read",
-        `${rivetPath}/Contents/Info.plist`,
-        "CFBundleShortVersionString",
-      ]);
-      const version = ver.code === 0 ? ver.stdout.trim() : "version unknown";
+      const roles = (["reasoner", "worker", "scout"] as const).map((role) => ({
+        role,
+        modelId: profile.roles[role],
+        entry: registry.resolve(profile.roles[role]),
+      }));
+
+      const roleStr = roles.map(({ role, modelId }) => `${role}=${modelId}`).join(", ");
       results.push({
-        name: "Rivet.app",
+        name: "Active provider",
         status: "ok",
-        detail: `${rivetPath} (v${version})`,
+        detail: `${profile.id} (${roleStr})`,
       });
-    } else {
+
+      profileOk = true;
+
+      // Check each unique transport required by this profile
+      const checkedTransports = new Set<string>();
+      for (const { entry } of roles) {
+        if (entry.transport === "cli") {
+          const bin = entry.cli!.bin;
+          const key = `cli:${bin}`;
+          if (checkedTransports.has(key)) continue;
+          checkedTransports.add(key);
+
+          const found = probes.which(bin);
+          if (found) {
+            results.push({
+              name: `${profile.id}: ${bin} CLI transport`,
+              status: "ok",
+              detail: found,
+            });
+          } else {
+            results.push({
+              name: `${profile.id}: ${bin} CLI transport`,
+              status: "fail",
+              detail: `${bin} not found on PATH`,
+              hint:
+                bin === "claude"
+                  ? "Install from https://docs.claude.com/en/docs/claude-code"
+                  : "npm i -g @openai/codex && codex login",
+            });
+          }
+        } else if (entry.transport === "api") {
+          const baseUrl = new URL(entry.api!.endpoint).origin;
+          const key = `api:${baseUrl}`;
+          if (checkedTransports.has(key)) continue;
+          checkedTransports.add(key);
+
+          const ok = await probes.reachable(baseUrl);
+          if (ok) {
+            results.push({
+              name: `${profile.id}: api transport`,
+              status: "ok",
+              detail: `${baseUrl} reachable`,
+            });
+          } else {
+            results.push({
+              name: `${profile.id}: api transport`,
+              status: "fail",
+              detail: `${baseUrl} unreachable`,
+              hint: "Start the API service (e.g. ollama serve)",
+            });
+          }
+        }
+      }
+    } catch (err) {
       results.push({
-        name: "Rivet.app",
+        name: "Active provider",
         status: "fail",
-        detail: "not found in /Applications or ~/Applications",
-        hint: "brew install --cask rivet",
+        detail: String(err instanceof Error ? err.message : err),
       });
     }
+
+    void profileOk;
+    void profileId;
   }
 
-  // 5. claude CLI on PATH + logged in (required)
+  // 5. claude CLI on PATH + logged in (required — Binding A)
   {
     const allClaudePaths = probes.whichAll("claude");
     const claudeBin = allClaudePaths[0];
@@ -176,7 +238,7 @@ export async function runDoctor(probes: DoctorProbes): Promise<CheckResult[]> {
     }
   }
 
-  // 6. codex CLI + codex doctor (optional → warn)
+  // 6. codex CLI + codex doctor (optional → warn — Binding B visibility)
   {
     const codexBin = probes.which("codex");
     if (!codexBin) {
@@ -253,7 +315,74 @@ export async function runDoctor(probes: DoctorProbes): Promise<CheckResult[]> {
     }
   }
 
-  // 9. Layer-0: OPENAI_API_KEY / ANTHROPIC_API_KEY must NOT be in env (required)
+  // 9. Rivet desktop app (OPTIONAL — Rivet's role as workflow engine is undecided)
+  {
+    const systemPath = "/Applications/Rivet.app";
+    const home = probes.env.HOME ?? "";
+    const userPath = `${home}/Applications/Rivet.app`;
+    const rivetPath = probes.exists(systemPath)
+      ? systemPath
+      : probes.exists(userPath)
+        ? userPath
+        : null;
+
+    if (rivetPath) {
+      const ver = await probes.exec("defaults", [
+        "read",
+        `${rivetPath}/Contents/Info.plist`,
+        "CFBundleShortVersionString",
+      ]);
+      const version = ver.code === 0 ? ver.stdout.trim() : "version unknown";
+      results.push({
+        name: "Rivet.app (optional)",
+        status: "ok",
+        detail: `${rivetPath} (v${version})`,
+      });
+    } else {
+      results.push({
+        name: "Rivet.app (optional)",
+        status: "warn",
+        detail: "not found in /Applications or ~/Applications",
+        hint: "brew install --cask rivet",
+      });
+    }
+  }
+
+  // 10. Canon: all pipelines load without error (required)
+  {
+    const canon = probes.loadCanon();
+    if (canon.failed.length === 0 && canon.loaded.length > 0) {
+      results.push({
+        name: "Canon (pipelines)",
+        status: "ok",
+        detail: `${canon.loaded.length} pipeline(s) loaded: ${canon.loaded.join(", ")}`,
+      });
+    } else if (canon.failed.length === 0 && canon.loaded.length === 0) {
+      results.push({
+        name: "Canon (pipelines)",
+        status: "warn",
+        detail: "no pipeline files found in pipelines/",
+        hint: "add at least one .yaml file to pipelines/",
+      });
+    } else {
+      for (const { file, error } of canon.failed) {
+        results.push({
+          name: "Canon (pipelines)",
+          status: "fail",
+          detail: `${file}: ${error}`,
+        });
+      }
+      if (canon.loaded.length > 0) {
+        results.push({
+          name: "Canon (pipelines)",
+          status: "ok",
+          detail: `${canon.loaded.length} pipeline(s) loaded: ${canon.loaded.join(", ")}`,
+        });
+      }
+    }
+  }
+
+  // 11. Layer-0: OPENAI_API_KEY / ANTHROPIC_API_KEY must NOT be in env (required)
   {
     const leaked = (["OPENAI_API_KEY", "ANTHROPIC_API_KEY"] as const).filter(
       (k) => k in probes.env && Boolean(probes.env[k])
@@ -338,6 +467,39 @@ export function defaultProbes(): DoctorProbes {
       }
     },
 
+    reachable: async (baseUrl) => {
+      try {
+        await fetch(baseUrl);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+
+    loadCanon: () => {
+      const pipelinesDir = join(_repoRoot, "pipelines");
+      const loaded: string[] = [];
+      const failed: { file: string; error: string }[] = [];
+      let files: string[];
+      try {
+        files = listPipelines(pipelinesDir);
+      } catch (err) {
+        return {
+          loaded,
+          failed: [{ file: pipelinesDir, error: String(err instanceof Error ? err.message : err) }],
+        };
+      }
+      for (const file of files) {
+        try {
+          const pipeline = loadPipeline(file);
+          loaded.push(pipeline.def.id);
+        } catch (err) {
+          failed.push({ file, error: String(err instanceof Error ? err.message : err) });
+        }
+      }
+      return { loaded, failed };
+    },
+
     env: process.env,
   };
 }
@@ -358,7 +520,7 @@ export function hasFailures(results: CheckResult[]): boolean {
   return results.some((r) => r.status === "fail");
 }
 
-// ── Entry point (tsx src/rivet/doctor.ts) ────────────────────────────────────
+// ── Entry point (tsx src/doctor.ts) ──────────────────────────────────────────
 const isMain =
   typeof process.argv[1] === "string" &&
   fileURLToPath(import.meta.url) === resolve(process.argv[1]);
