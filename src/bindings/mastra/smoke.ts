@@ -9,7 +9,9 @@ import { Mastra } from "@mastra/core/mastra";
 import { LibSQLStore } from "@mastra/libsql";
 import { makeDb } from "../../db/index.js";
 import { listPipelines, loadPipeline } from "../../canon/load.js";
-import { defaultRegistry, getProfile } from "../../canon/registry.js";
+import { defaultRegistry, getProfile, resolveStepModel } from "../../canon/registry.js";
+import type { ModelEntry } from "../../canon/registry.js";
+import type { StepDef } from "../../canon/types.js";
 import { DrizzleTicketStore } from "../../store/sqlite.js";
 import { buildPipelineWorkflow } from "./build.js";
 
@@ -22,19 +24,31 @@ function getFlag(flag: string, fallback: string): string {
   return idx !== -1 && args[idx + 1] ? args[idx + 1] : fallback;
 }
 
+function getOptFlag(flag: string): string | undefined {
+  const idx = args.indexOf(flag);
+  return idx !== -1 && args[idx + 1] ? args[idx + 1] : undefined;
+}
+
+function hasFlag(flag: string): boolean {
+  return args.includes(flag);
+}
+
 const dbPath = getFlag("--db", "/tmp/yoke-mastra-smoke.sqlite");
 const mastraDbPath = dbPath.replace(/\.sqlite$/, "-mastra.db");
-const intakeModel = getFlag("--intake-model", "haiku");
 const providerId = getFlag("--provider", process.env.YOKE_PROVIDER ?? "anthropic");
 const profile = getProfile(providerId);
+
+// --intake-model: explicit override for the intake step only, opt-in (no default)
+const intakeModelOverride = getOptFlag("--intake-model");
+
+// --cheap: pin every step to the profile's scout entry for quick iteration
+const cheap = hasFlag("--cheap");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const repoRoot = join(__dirname, "..", "..", "..");
 
-console.log(
-  `Smoke: dbPath=${dbPath} mastraDbPath=${mastraDbPath} intakeModel=${intakeModel} provider=${providerId}`
-);
+console.log(`Smoke: provider=${providerId} db=${dbPath}`);
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -51,10 +65,65 @@ if (!pipelineFile) {
 }
 
 const loaded = loadPipeline(pipelineFile);
+const llmSteps = loaded.def.steps.filter((s): s is StepDef => s.kind === "llm");
+
+// ── Build models override map ─────────────────────────────────────────────────
+// By default pass no overrides — every step resolves via the active ProviderProfile.
+// --cheap: pin all steps to the scout entry (portable across providers).
+// --intake-model <id>: override only the intake step (applied on top of --cheap if both set).
+
+const modelsOverride: Record<string, string> = {};
+
+if (cheap) {
+  const scoutId = profile.roles.scout;
+  for (const step of llmSteps) {
+    modelsOverride[step.id] = scoutId;
+  }
+}
+
+if (intakeModelOverride) {
+  modelsOverride.intake = intakeModelOverride;
+}
+
+// ── Resolution table ──────────────────────────────────────────────────────────
+// Shows what model each step will actually use — evidence that the provider swap is real.
+
+function describeEntry(entry: ModelEntry): string {
+  if (entry.transport === "cli") {
+    const model = entry.cli?.model ? ` --model ${entry.cli.model}` : "";
+    return `cli:${entry.cli?.bin ?? "?"}${model}`;
+  }
+  return `api:${entry.api?.endpoint ?? "?"}`;
+}
+
+console.log("\nResolution table:");
+for (const step of llmSteps) {
+  const overrideId = modelsOverride[step.id];
+  const entry = overrideId
+    ? registry.resolve(overrideId)
+    : resolveStepModel(step, profile, registry);
+  const source = overrideId ? `override(${overrideId})` : `role:${step.role ?? "—"} → ${entry.id}`;
+  console.log(`  ${step.id.padEnd(10)} ${source.padEnd(32)} ${describeEntry(entry)}`);
+}
+console.log("");
+
+// ── Run ───────────────────────────────────────────────────────────────────────
 
 const wf = buildPipelineWorkflow(loaded, { registry, store, profile });
 const mastra = new Mastra({ storage: mastraStorage, workflows: { [loaded.def.id]: wf } });
 const mastraWf = mastra.getWorkflow(loaded.def.id);
+
+const run = await mastraWf.createRun();
+
+const inputData: Record<string, unknown> = {
+  request:
+    "Add a dark mode toggle to the web app. Users should be able to switch between light and dark themes and have the preference persisted across sessions.",
+};
+if (Object.keys(modelsOverride).length > 0) {
+  inputData.models = modelsOverride;
+}
+
+let ticketCreated = false;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -75,27 +144,8 @@ function extractRunError(runResult: unknown): string {
   return "run did not succeed";
 }
 
-// ── Run ───────────────────────────────────────────────────────────────────────
-
-const run = await mastraWf.createRun();
-const modelsOverride: Record<string, string> = {
-  intake: intakeModel,
-  enrich: "haiku",
-  critic: "haiku",
-  security: "haiku",
-};
-
-console.log(`Starting run with models: ${JSON.stringify(modelsOverride)}`);
-let ticketCreated = false;
-
 try {
-  const r1 = await run.start({
-    inputData: {
-      request:
-        "Add a dark mode toggle to the web app. Users should be able to switch between light and dark themes and have the preference persisted across sessions.",
-      models: modelsOverride,
-    },
-  });
+  const r1 = await run.start({ inputData });
 
   console.log(`After start: status=${r1.status}`);
 
